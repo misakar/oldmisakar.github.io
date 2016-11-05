@@ -1,0 +1,39 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>flask源码阅读笔记~正则自动化</title>
+    </head>
+    <body>
+        <h1>flask中正则表达式的应用</h1>
+<p>说到正则表达式, 大家第一印象, 这货是用来进行字符串工作的: 匹配、查找、替换...
+然而正则的灵活以及对字符串的处理能力, 可以帮助我们进行一些繁琐的工作, 比如:
+更换版本号.</p>
+<h2>使用正则表达式自动更换版本号</h2>
+<p>还记得我开发mana的时候, 每发布一个新的版本, 都要先去setup.py中修改版本号,
+然后再去<code>mana version</code>命令中再次修改版本号输出, 很是麻烦. 而flask源码中,
+只在<code>__init__.py</code>作为版本号的源,
+其他地方(比如setup.py)则使用正则从源自动更新版本号, 所以每次更新版本,
+只要更新一处就行了!</p>
+<h2>version正则表达式</h2>
+<ul>
+<li><strong>源</strong>: flask,<code>__init__.py</code>:  <strong>version</strong> = '0.11.2-dev'</li>
+<li><strong>正则</strong>: flask, <code>setup.py</code>: _version_re = re.compile(r'<strong>version</strong>\s+=\s+(.*)')</li>
+</ul>
+<p>解释一下这个正则表达式<code>'__version__\s+=\s+(.*)'</code>, 其实很简单:
+<code>__version__</code>匹配<code>__version__</code>, <code>\s+</code>匹配=前的空格, <code>=</code>匹配=,
+<code>\s+</code>匹配等号右侧的空格, <code>(.*)</code>匹配版本号也就是<code>'0.11.2-dev'</code>. <br/></p>
+<p>然后从<code>__init__.py</code>中读取源, 就可以匹配()中的版本号了</p>
+<pre><code>with open('flask/__init__.py', 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
+</code></pre>
+<p>这里使用<code>_version_re.search</code>搜索匹配, 并返回group(1).
+search时需要把utf-8编码的文件转化为unicode. <br/>
+ast.literal_eval的功能和eval类似,
+不过会先判断被计算的内容是不是合法的python类型, 所以<code>str(ast.literal_eval(version))</code>
+的作用就是先检查version的类型是否合法, 然后转为python str字符串的形式.
+可以看出flask不打算迁移python3:)</p>
+    </body>
+</html>

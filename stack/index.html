@@ -1,0 +1,349 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>背包、队列、栈:使用范型和迭代</title>
+    </head>
+    <body>
+        <h1>背包、队列和栈</h1>
+<h2>范型可迭代的基础集合数据类型的API</h2>
+<p>无论是设计一个软件、算法还是简简单单的一个类, 我们首先要构思它的API. API是这个计算机代码集合对外的接口, 我想把它变成的样子.
+优雅的API，意味着可复用, 可复用则是计算机文化的基础, 因为可复用, 现在的每个人都站在几秒前巨人的肩膀上.</p>
+<h3>背包</h3>
+<pre><code>public class Bag&lt;Item&gt; implements Iterable&lt;Item&gt;
+{
+            Bag()              // 创建一个空背包
+    void    add(Item item)     // 向背包中添加一个元素
+    boolean isEmpty()          // 背包是否为空
+    int     size()             // 背包中的元素数量
+}
+</code></pre>
+<h3>队列</h3>
+<pre><code>public class Queue&lt;Item&gt; implements Iterable&lt;Item&gt;
+{
+            Queue()            // 创建空队列
+    void    enqueue(Item item) // 添加一个元素
+    Item    dequeue()          // 删除最早添加的元素
+    boolean isEmpty()          // 队列是否为空
+    int     size()             // 队列中的元素数量
+}
+</code></pre>
+<h3>栈</h3>
+<pre><code>public class Stack&lt;Item&gt; implements Iterable&lt;Item&gt;
+{
+            Stack()             // 创建一个空栈
+    void    push(Item item)     // 压入一个元素
+    Item    pop()               // 推出最后压入的元素
+    boolean isEmpty()           // 栈是否为空
+    int     size()              // 栈中的元素数量
+}
+</code></pre>
+<h2>范型</h2>
+<p>范型, 顾名思义:"广泛之类型", 这里所指类型的广泛是在我们编写代码时, 只需要编写一次范型模版, 便可应用到多种类型之上. 以上面的背包实现为例:</p>
+<ul>
+<li>背包定义: <code>public class Bag<Item> implements Iterable<Item>;</code></li>
+<li>存入String类型的背包(复合数据类型) <code>Bag<String> bag = new Bag<String>();</code></li>
+<li>存入Integer类型的背包(封装数据类型) <code>Bag<Integer> bag = new Bag<Integer>();</code></li>
+</ul>
+<h3>自动装/拆箱</h3>
+<p>Java 范型不支持基本数据类型, 不过范型支持封装数据类型和对应的基本数据类型的自动转换, 即自动装、拆箱: <br></p>
+<ol>
+<li>
+<p>Java封装数据类型和基本数据类型的转换</p>
+<ul>
+<li>Boolean =&gt; boolean; Byte =&gt; byte; Character =&gt; char; Double =&gt; double;</li>
+<li>Float =&gt; float; Integer =&gt; int; Long =&gt; long; Short =&gt; short;</li>
+</ul>
+</li>
+<li>
+<p>自动装拆箱</p>
+<ul>
+<li><code>Stack<Integer> stack = new Stack<Integer>;</code></li>
+<li><code>stack.push(1);</code>  // 自动装箱(int -&gt; Integer)</li>
+<li><code>int i = stack.pop();</code> // 自动拆箱(Integer -&gt; int)</li>
+</ul>
+</li>
+</ol>
+<h2>可迭代</h2>
+<p>可迭代就是可以迭代, 可以遍历, 比如Python中,
+可以使用<code>for..in</code>遍历的对象就是可迭代对象. Java也类似,
+只不过换成了<strong>foreach</strong>语句</p>
+<pre><code>Queue&lt;Transaction&gt; collection = new Queue&lt;Transaction&gt;();
+for (Transaction t: collection)
+{ 操作 }
+</code></pre>
+<p>和C++ STL中的遍历语句一样, 十分优雅方便.
+<hr/></p>
+<p>设计完API, 来具体介绍一下这几个数据类型的作用,
+其实这几个数据类型都是来源于我们生活中处理一些数据时的经验.</p>
+<h2>背包</h2>
+<p>顾名思义, 背包是用来装东西的, 背包关心的是装入数据的特点而不是装入数据的顺序.
+背包当然是"可迭代的", 如此才能在背包中找到我们要的数据.
+比如下面这个例子计算背包中数据的平均数和标准差:</p>
+<pre><code>public class Stats
+{
+    public static void main(String[] args)
+    {
+        Bag&lt;Double&gt; numbers = new Bag&lt;Double&gt;();
+        while (!StdIn.isEmpty())
+            numbers.add(StdIn.readDouble());
+        int N = numbers.size();
+
+        double sum = 0.0;
+        for (double x : numbers)
+            sum += x;
+        double mean = sum/N;  // 平均数
+
+        sum = 0.0;
+        for (double x : numbers)
+            sum += (x - mean)*(x - mean);
+        double std = Math.sqrt(sum/(N-1));  // 标准差
+
+        StdOut.printf("Mean: %.2f\n", mean);
+        StdOut.printf("Std: %.2f\n", std);
+    }
+}
+</code></pre>
+<h2>队列(FIFO)</h2>
+<p>队列是一种(先进先出FIFO策略)的集合类型, 排队就是一种队列, 倡导公平,
+等待时间最长的人最先享受服务, 当然公平不是平等...
+如果服务的处理效率太慢可是会引起不满的...一条长队意味着阻塞. <br/>
+这个例子通过队列的FIFO的特性, 将文件中的数据顺序写入数组中,
+而且文件的一切细节于之无关:</p>
+<pre><code>public static int[] readInts(String name)
+{
+    In in = new In(name);
+    Queue&lt;Integer&gt; q = new Queue&lt;Integer&gt;();
+    while (!in.isEmpty())
+        q.enqueue(in.readInt()); // 从文件中读入整数, 加入队列(自动装箱)
+
+    int N = q.size();
+    int[] a = new int[N];  // 数组定义初始化
+    for (int i = 0; i &lt; N; i++)
+        a[i] = q.dequeue();  // FIFO: 顺序保持不变
+    return a;
+}
+</code></pre>
+<h2>栈(FILO)</h2>
+<p>栈是一种实现后进先出策略的集合结构, 栈的应用十分广泛: 比如阅读电子邮件,
+最新的未读邮件在最上的位置; 有的软件的核心就是栈: 比如Flask,
+Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
+<img alt="flask" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-07-13%20%E4%B8%8B%E5%8D%888.00.20.png" /> <br/>
+现代编译器的实现基本上也是基于栈结构的, 比如我昨天发的tweet: <br/>
+<img alt="tweet" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-07-13%20%E4%B8%8B%E5%8D%888.01.59.png" /> <br/></p>
+<h3>双栈解释器求解算术表达式</h3>
+<p>计算机是如何求解 <strong>( 1 + ( ( 2 + 3 ) * ( 4 + 5) ) )</strong> 这个算术表达式的呢? <br>
+这个例子是栈非常经典的应用: E.W.Dijkstra在20世纪60年代发明了一个简单的算法:
+用两个栈实现算术表达式的计算<br/></p>
+<p>以上面的算术表达式为例(  1 + ( ( 2 + 3 ) * ( 4 + 5) ) ),</p>
+<ol>
+<li>构造两个栈: ops~操作符栈,  vals~操作数栈</li>
+<li>满足规则:<ol>
+<li>从左至右遍历算术表达式, 操作数压入操作数栈; 操作符压入操作符栈</li>
+<li>忽略左括号(</li>
+<li>如果遇到右括号),<ul>
+<li>则操作数栈弹出一个操作数, 操作符栈弹出一个操作符</li>
+<li>从操作数栈中弹出匹配操作符数量的操作数, 与先前弹出的操作数计算</li>
+<li>将计算结果压入操作数栈</li>
+</ul>
+</li>
+</ol>
+</li>
+<li>操作数栈中最后一个栈顶操作数就是该算术表达式的运算结果</li>
+</ol>
+<p>代码实现:</p>
+<pre><code>public class Evaluate
+{
+    public static void main(String[] args)
+    {
+        Stack&lt;String&gt; ops = new Stack&lt;String&gt;();  // 操作符栈
+        Stack&lt;Double&gt; vals = new Stack&lt;Double&gt;();  // 操作数栈
+        while (!StdIn.isEmpty())
+        {
+            String s = StdIn.readString();
+            if      (s.equals("("))                 ;
+            else if (s.equals("+"))      ops.push(s);
+            else if (s.equals("-"))      ops.push(s);
+            else if (s.equals("*"))      ops.push(s);
+            else if (s.equals("/"))      ops.push(s);
+            else if (s.equals(")"))
+            {
+                String op = ops.pop();  // 弹出操作符
+                double v  = vals.pop(); // 弹出操作数
+                if      (op.equals("+")) v += vals.pop();  // 利用java基础计算特性
+                else if (op.equals("-")) v -= vals.pop();  // 双目运算符
+                else if (op.equals("*")) v *= vals.pop();
+                else if (op.equals("\")) v \= vals.pop();
+                vals.push(v);
+            }
+            else vals.push(Double.parseDouble(s));
+        }
+        StdOut.println(vals.pop());
+    }
+}
+</code></pre>
+<h2>范型实现</h2>
+<p>如何用范型实现这些基础的数据结构呢? 比如用范型实现栈,
+关键是用类型占位符(Item)去替代特定的类型. 下面的代码用范型实现了一个定容栈:</p>
+<pre><code>API: public class FixedCapacityStack&lt;Item&gt;
+</code></pre>
+<p>Item意味着我们编写代码时不需要考虑面向的具体类型(很多情况下我们并不知道实际的类型是什么).
+只要我们能在创建栈时提供具体的数据类型, 我们就可以用这个栈处理任意数据类型.
+当然我们提供的类型需要是引用类型, Java范型可以通过自动装拆箱处理原始类型.
+<br>
+范型定容栈实现代码:</p>
+<pre><code>public class FixedCapacityStack&lt;Item&gt;
+{
+    private Item[] a;  // 范型数组定义
+    private int N;
+    public FixedCapacityStack(int cap)
+    { a = (Item[]) new Object[cap]; }  // 范型数组初始化, 范型类型转换
+    public boolean isEmpty() { return N == 0;}
+    public int size() { return N; }
+    public void push(Item item)
+    { a[N++] = item; }
+    public Item pop()
+    { return a[--N]; }
+}
+</code></pre>
+<h2>应用</h2>
+<h3>动态数组</h3>
+<p>范型数组初始化 a = (Item[]) new Object[cap]; 大小是固定的cap;
+固定大小的数组在实际使用中会浪费空间, 设想处理100条数据, 99条数据大小很小,
+仅有1条很大, 为了这一条数据, 不得不用很大的数组空间去处理100条数据,
+这显然是对空间的浪费. 所以我们需要实现动态数组,
+在添加数据的时候自动进行缩减和扩容.</p>
+<p>1.首先需要实现一个resize方法将栈移动到另一个大小不同的数组中:</p>
+<pre><code>private void resize(int max)
+{
+    // 将大小为N &lt; max的栈移动到一个新的大小为max的数组中
+    Item[] temp = (Item[]) new Object[max];
+    for (int i = 0; i &lt; N; i++)
+        temp[i] = a[i];
+    a = temp;  // 扩容
+}
+</code></pre>
+<p>2.push的时候需要考虑当栈大小和数组大小相同时进行扩容, 扩容数组大小为原来的2倍</p>
+<pre><code>public void push(Item item)
+{
+    if (N == a.length) resize(2*a.length);
+    a[N++] = item;
+}
+</code></pre>
+<p>3.pop的时候需要考虑当栈大小小于数组长度的1/4时, 缩减数组的大小为原来的一半</p>
+<pre><code>public void pop(Item item)
+{
+    Item item = a[--N];
+    if (N &gt; 0 &amp;&amp; N == a.length*1/4) resize(a.length*1/2);
+    return item;
+}
+</code></pre>
+<p>注意resize操作是需要时间开销的, 临界条件定为1/4,
+a数组减半后还可以进行item的push, 减少resize操作的次数</p>
+<h3>对象游离</h3>
+<p>pop一个元素后, 这个元素其实还存在于a数组中,
+成为了一个不需要再被引用的孤儿(很可怜),即[对象游离], 所以我们需要帮助这个孤儿..., 方法很简答,
+设值为null, Java会自行进行回收. 修改pop方法:</p>
+<pre><code>public void pop(Item item)
+{
+    Item item = a[--N];
+    a[N] = null;  // 设值为null, 避免对象游离
+    if (N &gt; 0 &amp;&amp; N == a.length*1/4)  resize(a.length*1/2);
+    return item;
+}
+</code></pre>
+<h2>实现迭代</h2>
+<p>先前提到过, 背包、队列、栈可以通过foreach语句进行遍历,
+foreach语句实际上是while语句的语法糖:</p>
+<pre><code>Iterator&lt;Item&gt; i = collection.iterator();
+while (i.hasNext())
+{
+    Item s = i.next();
+    StdOut.println(s);
+}
+</code></pre>
+<p>从这个"原始"的语句中, 我们可以一窥实现迭代的条件</p>
+<ol>
+<li>集合数据类型必须实现一个iterator方法(迭代器), 并返回一个Iterator对象</li>
+<li>Iterator类必须包含两个方法: hasNext()[返回一个布尔值] 和 next()[返回一个范型对象]</li>
+</ol>
+<p>其实Python中的for..i迭代也是如此, 需要实现<strong>iter</strong>魔法方法,
+和next方法进行遍历,Python通过继承Object元类实现这些方法, Java不允许多继承,
+所以使用接口实现特定的迭代方法:</p>
+<pre><code>public interface Iterable&lt;Item&gt;
+{
+    // java官方Iterable接口
+    // 实现了一个iterator迭代器
+    Iterator&lt;Item&gt; iterator();
+}
+</code></pre>
+<p>我们也可以实现自己的迭代器接口, 比如我们希望实现一个栈迭代器,
+遵循LIFO对栈数组进行逆序遍历</p>
+<pre><code>// 逆序数组迭代器
+public Iterator&lt;Item&gt; iterator()
+{ return new ReverseArrayIterator(); }
+</code></pre>
+<p>数组迭代器接口</p>
+<pre><code>// import java.util.Iterator
+public interface Iterator&lt;Item&gt;
+{
+    boolean hasNext();
+    Item next();
+    void remove();
+}
+</code></pre>
+<p>逆序数组迭代器实现(通过实现官方接口, 重载方法)</p>
+<pre><code>private class ReverseArrayIterator implements Iterator&lt;Item&gt;
+{
+    private int i = N;
+
+    public boolean hasNext()  { return i &gt; 0;  }
+    public Item next()        { return a[--i]; }
+    public void remove        {                } // 避免遍历时进行删除操作
+}
+</code></pre>
+<p>这里逆序数组迭代器的实现时写在Stack类中的, 即嵌套类实现,
+这样就可以再ReverseArrayIterator中获取N和数组a了
+<br/>
+下压栈实现(遍历栈、动态调整数组大小)</p>
+<pre><code>import java.util.iterator
+public class ResizingArrayStack&lt;Item&gt; implements Iterable&lt;Item&gt;
+{
+    private Item[] a = (Item[]) new Object[1];  // 初始化null
+    private int N = 0;
+    public boolean isEmpty()  { return N == 0; }
+    public int size()         { return N;      }
+    private void resize(int max)
+    {
+        Item[] temp = (Item[]) new Object[max];
+        for (int i = 0; i &lt; N; i++)
+            temp[i] = a[i];
+        a = temp;
+    }
+    public void push(Item item)
+    {
+        if (N == a.length) resize(a.length*2);
+        a[N++] = item;
+    }
+    public Item pop()
+    {
+        Item item = a[--N];
+        a[N] = null;
+        if (N &gt; 0 &amp;&amp; N == a.length*1/4) resize(a.length*1/2);
+        return item;
+    }
+    public Iterator&lt;Item&gt; iterator()
+        { return new ReverseArrayIterator(); }
+    private class ReverseArrayIterator implements Iterator&lt;Item&gt;
+    {
+        private int i = N;
+        public boolean hasNext()  { return i &gt; 0;  }
+        public Item next()        { return a[--i]; }
+        public void remove()      {                }
+    } 
+}
+</code></pre>
+<p>这样我们就实现了一个可以动态改变数组大小且可迭代的栈数据结构:)</p>
+    </body>
+</html>

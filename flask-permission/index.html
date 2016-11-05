@@ -1,0 +1,217 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>Flask权限管理</title>
+    </head>
+    <body>
+        <h2>基本的flask权限管理</h2>
+<h3>1. 验证字段与密码的存储</h3>
+<p>权限管理的基础就是验证字段(用户名or邮箱...)以及密码,
+所以首先需要考虑验证字段和密码的存储。(这里使用flask-sqlalchemy作为ORM)</p>
+<pre><code>model:User
+
+class User(db.Model):
+    """用户类"""
+    id = db.Column(db.Integer, primary_key=True)
+    # 用户名字符串存储即可
+    username = db.Column(db.String(164))
+    # 密码一定要注意
+    # 密码不允许在数据库中明文存储
+    password_hash = db.Column(db.String(164))
+    ......
+
+    # 所以需要对用户传入的明文密码进行加密
+    @property
+    def password(self):
+        """
+        password属性函数
+        不允许直接读取原始值
+        """
+        return "密码不是可读形式!"
+
+    @password.setter
+    def password(self, password):
+        """
+        设置密码hash值
+        """
+        self.password_hash = werkzeug.security.generate_password_hash(password)
+
+    def verify_password(self, password):
+        """
+        将用户输入的密码明文与数据库比对
+        """
+        return werkzeug.security.check_password_hash(password)
+</code></pre>
+<h3>2. 用户权限与角色的设置</h3>
+<p>我一般将用户权限设置为16进制的值, 而用户角色则是用户权限(16进制的值)的<strong>异或(|)</strong>运算,
+比如我设置以下2个权限:</p>
+<pre><code>class Permission:
+    """
+    权限表
+    """
+    COMMENT = 0x01  # 评论
+    MODERATE_COMMENT = 0x02  # 移除评论
+</code></pre>
+<p>那么可设置如下角色, 并建立和User的<strong>多对一</strong>关系:</p>
+<pre><code>class Role(db.Model):
+    """
+    用户角色
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    # 该用户角色名称
+    name = db.Column(db.String(164))
+    # 该用户角色是否为默认
+    default = db.Column(db.Boolean, default=False, index=True)
+    # 该用户角色对应的权限
+    permissions = db.Column(db.Integer)
+    # 该用户角色和用户的关系
+    # 角色为该用户角色的所有用户
+    users = db.relationship('User', backref='role', lazy='dynamic')
+
+    @staticmethod
+    def insert_roles():
+        """
+        创建用户角色
+        """
+        roles = {
+            # 定义了两个用户角色(User, Admin)
+            'User': (Permission.COMMENT, True),
+            'Admin': (Permission.COMMENT |
+                      Permission.MODERATE_COMMENT, False)
+        }
+        for r in roles:
+            role = Role.query.filter_by(name=r).first()
+            if role is None:
+                # 如果用户角色没有创建: 创建用户角色
+                role = Role(name=r)
+            role.permissions = roles[r][0]
+            role.default = roles[r][1]
+            db.session.add(role)
+            db.session.commit()
+</code></pre>
+<p>现在只需在User里创建一个指向用户角色的外键即可</p>
+<pre><code>calss User(db.Model):
+    ......
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    ......
+</code></pre>
+<h2>flask权限在具体场景中的应用</h2>
+<p>应用在具体场景, 使用相关扩展就不可避免了</p>
+<h3>1. 处理登录(flask-login)</h3>
+<p>对于flask登录,使用flask-login是较为简单的办法,
+但是个人感觉<code>flask-login</code>不是很灵活(下面的扩展也是,
+毕竟扩展的目的是通用)。<br/>
+这里就不具体说明<a href="https://flask-login.readthedocs.org/en/latest/">如何集成flask-login了</a>,主要说如何使用</code>flask-login</code><br/></p>
+<h4>用户登录</h4>
+<p>使用flask-login提供的<code>login_user</code>, <code>current_user</code></p>
+<pre><code>@auth.route('/login/', methods=["POST", "GET"])
+def login():
+    """用户登录"""
+    next = get_redirect_target()
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is not None and user.verify_password:
+            login_user(user)
+            return redirect_back('default redirect back url', id=current_user.id)
+        flash("用户名或密码错误!")
+    return render_template("login.html", form=form, next=next)
+</code></pre>
+<h4>用户登出</h4>
+<p>使用flask-login提供的<code>logout_user</code></p>
+<pre><code>@login_required
+@auth.route('/logout/')
+def logout():
+    """用户登出"""
+    logout_user()
+    return redirect("重定向路由")
+</code></pre>
+<h3>2. 处理HTTPBasicAuth(flask-httpauth)</h3>
+<p><a href="http://flask-httpauth.readthedocs.org/en/latest/">flask-httpauth</a> 可以帮助我们处理一些基本的权限管理,
+同flask-login一样, flask-httpauth 也提供了一个<strong>login_required</strong>装饰器,
+通过auth对象调用即可控制<strong>用户名, 密码</strong>的登录权限控制。</p>
+<h4>token权限管理</h4>
+<p>这里比较复杂的地方就是token的权限管理了, 因为此处没有拓展可用(扩展是为了通用性, 但是token不是强制使用的),
+都是自己踩坑弄出来的, 写在博客里做一个纪录。</p>
+<h5>什么是token</h5>
+<p>token是用户信息(一般是用户id,
+具有唯一标识作用)的标识。对用户id进行签名加密(我一般使用itsdangerous模块),
+例如:</p>
+<pre><code>from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+
+# 此函数为User类的成员函数
+def generate_auth_token(self):
+    s = Serializer(
+        current_app.config['SECRET_KEY'],  # 密钥很重要
+        expiration  # Token的寿命
+    )
+    # 用获取的签名加密用户id信息
+    return s.dumps({'id': self.id})
+</code></pre>
+<h5>为什么需要token</h5>
+<p>token 一般使用在API的场景中, 此时<strong>客户端和服务器端是分离的</strong>,
+数据信息通过API进行传递, 他人很容易就可以拦截API并获取验证头部的<strong>authorization</strong>字段,
+从而获取用户名和密码(一般是base64进行了加密, 但是很容易被破解), 这样是极不安全的。<br/>
+之所以需要验证, 其实就是为了标识这个用户是谁, 而id就是一个最好的标识,
+所以通过用户的<strong>用户名和密码请求token</strong>(这样用户名和密码不会频繁被发送),
+用获取的token放在API头部进行传递, 这样即使被拦截,
+也不会获取用户的敏感信息(用户名, 密码), 即使token被他人使用,
+也会因为token的寿命而使破坏性大大降低。</p>
+<h5>token的使用: 发送token</h5>
+<p>token需放在<strong>Authorization</strong>头部, 采用如下形式发送:</p>
+<pre><code>"Basic token"
+</code></pre>
+<h5>token的使用: 解析token</h5>
+<p>依然采用<strong>itsdangerous</strong>模块, 这里<strong>密钥</strong>就很重要了,
+只有与加密相同的密钥才可以解析token。</p>
+<pre><code># User类的一个静态成员函数
+@staticmethod
+def verify_auth_token(token):
+    # 获取签名
+    s = Serializer(current_app.config["SECRET_KEY"])
+    try:
+        data = s.loads(token)  # 用签名解析token
+    except:
+        return None
+    # 返回该token标识的用户
+    return User.query.filter_by(id=data['id'])
+</code></pre>
+<h6>基于token的权限管理</h6>
+<p>这里主要是区别普通用户和管理员用户, 因为有些特定的操作是只有管理员可以进行的。<br/></p>
+<p>1.在User类里添加管理员判断函数 <br/></p>
+<pre><code>def can(self, permission):
+    # 判断用户是否具备某权限
+    return self.role is not None and (self.role.permissions &amp; permissions) = permissions
+
+def is_adminstractor(self):
+    # 判断用户是否具备管理员权限
+    return self.can(Permission.COMMENT | Permission.MODERATE_COMMENT)
+</code></pre>
+<p>2.创建<strong>管理员权限判断装饰器</strong><br/></p>
+<pre><code>from functools import wraps
+from flask import request, g
+
+def admin_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        token_header = request.headers.get('authorization')
+        token = token_header[6:]  # 去掉格式中的Basic
+        if token:
+            g.current_user = User.verify_auth_token(token)
+            if g.current_user.is_adminstractor():
+                return f(*args, **kwargs)
+            else:
+                abort(403)
+    return decorator
+</code></pre>
+<p>然后就可以使用<strong>admin_required</strong>装饰器进行权限管理了,
+这里有个坑提一下就是<strong>flask-httpauth</strong>会自己添加Basic,
+所以使用该扩展的地方就不必考虑token格式的问题了。</p>
+<h2>总结</h2>
+<p>flask权限管理比较烦的地方就是如何使不同的权限管理扩展一起工作,
+以及使用了扩展以后对于定制自己的东西该如何写,
+这时候还是最好去看使用相应扩展的源码, 然后以此为基础, 展开自己的工作吧！</p>
+    </body>
+</html>

@@ -1,0 +1,242 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>Union-Find算法</title>
+    </head>
+    <body>
+        <h1>Union-Find算法</h1>
+<h2>动态连通性概念介绍</h2>
+<p>动态连通性的概念请参考这张经典的图<br/>
+<img alt="Dynamic Connectivity" src="http://my.csdn.net/uploads/201206/12/1339478916_8193.png" />
+<br/>
+<strong>动态连通性问题</strong>是对某一空间中的节点的连通性判断,
+初始状态下节点之间互相独立,我们可以连接(union)两个节点,
+节点的连接操作没有方向性,且间接连接的节点不可(没有必要)再直接连接,
+我们还可以对节点的连通性进行判断(connected)。<br/>
+这个空间中的节点可以归纳到某一数据结构中, 这个数据结构就是<strong>并查集</strong>, 构造并查集的一类算法称为Union-Find算法.</p>
+<h2>应用举例</h2>
+<p>动态连通性的应用十分广泛, 因为节点和网络的抽象几乎适用于任何层次的"社会"模型,
+比如:<br/></p>
+<ul>
+<li>将节点抽象为计算机, 节点之间的连通性抽象为网络, 那么动态连接性问题可以让我们减少不必要的布线</li>
+<li>将节点抽象为用户, 节点之间的连通性抽象为共同的爱好, 那么一个高效的推荐系统就可以应用于产品之中</li>
+<li>将节点抽象为变量, 节点之间的连通性抽象为变量间的引用关系, 那么构造并查集就可以解决变量的循环引用问题, 避免引用环的存在, 方便引用技术和垃圾回收</li>
+</ul>
+<p>这里也体现了算法应用之广度, 将不同的算法置于不同的维度就可以解决不同的问题!
+<br/>
+当然, <strong>将算法用于问题解决的先决条件是这个算法要足够优秀,</strong>
+我下面会用代码实现并查集以及对并查集的操作, 并逐层次的改进代码!</p>
+<h1>并查集算法实现</h1>
+<h2>算法一: UnionFind</h2>
+<pre><code>// UnionFind: 并查集实现
+// 数据结构: 用一个数组id[]表示并查集
+//           id[]数组中的每一个元素表示一个节点
+//           每一元素的的索引表示这个节点所在的组
+//           同一组中(具有相同索引的元素)的节点是连接的
+
+public class UnionFind
+{
+    private int[] id;  // 内部结构, 用于存储集合的所有节点
+
+    UnionFind(int N)
+    {
+        // 构造函数
+        id = new int[N];
+        // 初始化并查集节点
+        for (int i = 0; i &lt; id.length(); i++)
+            { id[i] = i; }
+    }
+
+    void Union(int p, int q)
+    {
+        // 连接操作(连接p, q)
+        if (id[p] == id[q])
+            { return; // 已经连接 }
+        for (int i = 0; i &lt; id.length(); i++)
+        {
+            if (id[i] == id[p])
+            {
+                // 遍历, 把所有id与p相同的元素都与q连接(id置为相同)
+                id[i] = id[q];
+            }
+        }
+    }
+
+    boolean connected(int p, int q)
+    {
+        // 判断连通性操作
+        return id[p] == id[q]
+    }
+}
+</code></pre>
+<h2>算法二: QuickUnion</h2>
+<p>使用数组表示并查集是一个简单的做法, 方便我们去理解, 但是实际问题的规模都是很大的,
+使用数组构造并查集的时间复杂度是O(N)[连接遍历], 随着问题规模的增大, 构造花费的时间就越多。那么有没有更好的一种结构方便节点的分组和同组节点的查找呢?<br/>
+<strong>树</strong>就是一种很好的结构,
+如果用树的根节点而不是数组的索引表示并查集中节点所在的组编号,那么我们在连接时只需要merge元素到根节点,
+在判断时只需要查找根节点即可。</p>
+<pre><code>// QuickUnion算法: 使用树结构实现并查集
+// 数据结构: 依然是一个整数数组id, 但是不再用数组的索引表示组编号
+// 而是用id[i]表示节点i的组编号, 即构造树结构
+
+public class QuickUnion
+{
+    int id[];
+
+    QuickUnion(int N)
+    {
+        id = new int[N];
+        for (int i = 0; i &lt; id.length(); i++)
+        {
+            // 构造函数
+            // 初始化所有的节点的根节点为自己
+            id[i] = i;
+        }
+
+    }
+
+    int root(int i)
+    {
+        // 计算元素i的根节点
+        // 使用深度优先巧妙的避开问题的规模,
+        // 但是需要注意构造树的深度
+        while (i != id[i])
+        {
+            i = id[i];  // 向父节点查找
+        } // DFS
+        return i;
+    }
+
+    void union(int p, int q)
+    {
+        // 连接操作
+        if (root[p] == root[q])
+            { return; }
+        else
+            { root[p] = root[q]; }  // 所有以root[p]为根的节点都会与q连接, 避免了规模遍历, 连接操作是常数时间.
+    }
+
+    boolean connected(int p, int q)
+    {
+        // 判断是否连接
+        return root[p] == root[q];
+    }
+}
+</code></pre>
+<h2>算法三: Weighted QuickUnion</h2>
+<p>快速连接算法利用树结构巧妙避开了查找过程中问题规模对算法复杂度的影响(查找根节点的过程),
+但是可以看出树的深度对算法效率的影响很大,
+所以在连接过程中我们希望尽可能减少树的深度,这时就需要注意每个组的规模(深度),
+并将规模小的组merge到规模大的组, 从而减少连接以后整个分组树的深度(如图)<br/>
+<img alt="merge" src="http://my.csdn.net/uploads/201206/12/1339479587_5986.png" /><br/>
+所以我们需要在QuickUnion的基础上增加对组规模的判断, 这就是Weighted QuickUnion:</p>
+<pre><code>// WeightedQuickUnion: 带规模的快速连接, 用于减少构造树的深度
+// 在QuickUnion的基础上增加size数组表示每个根节点标识组的节点规模(个数)
+// size数组初始化为每个节点规模为1
+
+public class WeightedQuickUnion
+{
+    private int[] id;
+    private int[] size;  // 存储每个根节点对应组的规模, 用于比较
+
+    public WeightedQuickUnion(int N)
+    {
+        // 构造函数
+        // 初始化id, size数组
+        id = new int[N];
+        size = new int[N];
+        for (int i = 0; i &lt; id.length(); i++)
+            { id[i] = i; }
+        for (int j = 0; j &lt; size.length(); j++)
+            { id[j] = 1; // 初始化所有组的规模为1}
+    }
+
+    int root(int i)
+    {
+        // 计算根节点
+        while (id[i] != i)
+        {
+            // 不是根节点, 那么向上查找
+            i = id[i];
+        }
+        return i;
+    }
+
+    void union(int p, int q)
+    {
+        // 连接操作
+        if (root[p] == root[q])
+            { return; }
+        else
+        {
+            // 对root[p]和root[q]所对应的组的规模进行比较
+            // 并将问题规模小的组merge到问题规模大的组
+            // 从而减少构造树的深度
+            if (size[root[p]] &lt; size[root[q]])
+            {
+                root[p] = root[q];
+                size[root[p]] += size[root[q]];
+            }
+            else
+            {
+                root[q] = root[p];
+                size[root[q]] += size[root[p]];
+            }
+        }
+    }
+
+    boolean connected(int p, int q)
+    {
+        // 判断节点的连通性
+        return root[p] == root[q];
+    }
+}
+</code></pre>
+<h2>算法四: Weighted QuickUnion with Path Compression</h2>
+<p>我们会进一步思考: 如何构造一个理想的树, 一个扁平的、所有孩子节点都在第一层的树.
+构造理想树的关键就是减少中间节点的数量,
+我们可以在while循环寻找i节点的根节点时将所有路过的中间节点保存在一个数组里,
+然后寻找结束后将这个数组中所有中间节点的父节点直接指向根节点,这样就可以构造一个理想树了!
+但是由于频繁查找根节点(每个中间节点), 每个DFS搜索路径都要构造中间数组,
+这就增加了算法的时间和空间复杂度。<br/>
+既然不能很好的构造理想树, 那么我们可以思考如何使树尽量扁平化,
+上面的size数组就是一个很好的尝试,
+减少中间节点我们可以在while遍历的过程中将中间节点指向他的爷爷节点,
+这样既可以使树扁平化, 也不会有额外的空间开销! <br/>
+只需在while循环中增加一行代码:</p>
+<pre><code>int root(int i)
+{
+    while (i != id[i])
+    {
+        // 将中间节点的父节点设为爷爷节点
+        // 使树扁平化
+        id[i] = id[id[i]];
+        i = id[i]; // DFS
+    }
+}
+</code></pre>
+<h2>四种并查集实现的比较</h2>
+<pre><code>算法      构造函数       Union        Connected
+-----------------------------------------------
+UnionFind    N             N             1
+-----------------------------------------------
+QuickUnion   N          TreeHeight   TreeHeight
+-----------------------------------------------
+Weighted     N            lgN           lgN
+QuickUnion
+-----------------------------------------------
+Weighted
+QuickUnion   N          Very near to  Very near
+with Path                   1           to 1
+Compression
+-----------------------------------------------
+</code></pre>
+<h1>参考</h1>
+<ul>
+<li>普林斯顿算法课程part1: 并查集</li>
+<li><a href="http://blog.csdn.net/dm_vincent/article/details/7655764">并查集算法的原理和改进</a></li>
+</ul>
+    </body>
+</html>

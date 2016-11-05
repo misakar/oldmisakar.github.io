@@ -1,0 +1,242 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>Assembly王国历险记</title>
+    </head>
+    <body>
+        <p><img alt="magic" src="http://7xj431.com1.z0.glb.clouddn.com/images-5.jpeg" /><br/>
+<strong>Welcome to a Magic World !</strong>
+<hr/></p>
+<h2>前记: 如何拿到了神秘世界大门的🔑</h2>
+<p>最近在学习操作系统, 仿照实例编写一个<strong>类linux x86架构32bit</strong>的微型操作系统neox。加载操作系统后(详细过程见<a href="http://neo1218.github.io/computer">这篇文章</a>), 首先需要将kernel加载进内存, 而这个代码需要使用汇编来写。 于是, 我决定进入这个神秘世界一探究竟。下面是我从汇编王国游历归来的一些见闻。<br/>
+<img alt="王国" src="http://7xj431.com1.z0.glb.clouddn.com/images-6.jpeg" /></p>
+<h2>Assembly 王国游记</h2>
+<h3>1. 一个建立在特定架构上的强大王国</h3>
+<p>Assembly王国是一个邦联制国家,
+是基于特定架构的公国组成的分散联盟。这个王国和高级语言国家不同,
+它具有[通灵]的能力, 可以直接与计算机硬件世界沟通, 我曾在一次王国祭祀中,
+亲眼目睹国王用Assembly语言祈求[万神之神CPU]保平安。 <br/>
+[Assembly国家祭祀神殿中供奉的CPU雕像:]<img alt="CPU" src="http://7xj431.com1.z0.glb.clouddn.com/images-7.jpeg" /><br/>
+当然, 每个公国祭祀的神灵也有不同, 比如[x86 32bit公国]祭祀的通用寄存器之神有4位(EAX,
+EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
+这个王国的神和这个王国一样神秘。</p>
+<h3>2. Assembly王国独特的语言-助记符语法规则</h3>
+<p><img alt="语言" src="http://7xj431.com1.z0.glb.clouddn.com/asm" /><br/>
+图片是我经过一个[vagrant神柱]时拍摄的,
+上面雕刻了这个王国的语言。这个王国的语言是实现强大[通灵]能力的关键,
+原来汇编语言就是[神之世界机器语言]的助记!</p>
+<ol>
+<li>用助记符代替操作码</li>
+<li>用地址符号(Symbol)或标号(Lable)代替地址码</li>
+</ol>
+<p>再借由大祭司们强大的[汇编程序]魔法就可以翻译成机器语言, 从而与硬件神灵们交流!!!
+<br/>
+我想再详细介绍一下[神之通灵汇编语法], 汇编语法由如下几类指令组成:</p>
+<ol>
+<li><strong>数据传送指令</strong><ol>
+<li>通用数据传送指令<ul>
+<li>MOV  =&gt; 传送<ul>
+<li>MOV DST, SRC  =&gt; DST = SRC</li>
+</ul>
+</li>
+<li>PUSH =&gt; 进栈<ul>
+<li>PUSH SRC</li>
+</ul>
+</li>
+<li>POP  =&gt; 出栈<ul>
+<li>POP DST</li>
+</ul>
+</li>
+<li>XCHG =&gt; 交换<ul>
+<li>XCHG OPR1, OPR2 =&gt; (OPR1)&lt;-&gt;(OPR2)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>累加器专用数据传送指令<ul>
+<li>IN   =&gt; 输入<ul>
+<li>IN AL, PORT(byte) =&gt; (AL)&lt;-PORT(byte)</li>
+</ul>
+</li>
+<li>OUT  =&gt; 输出<ul>
+<li>OUT PORT, AL(byte) =&gt; PORT&lt;-(AL)(byte)</li>
+</ul>
+</li>
+<li>XLAT =&gt; 换码<ul>
+<li>XLAT OPR =&gt; 将一种代码转换成另一种代码</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>有效地址送寄存器指令<ul>
+<li>LEA  =&gt; 有效地址送寄存器</li>
+<li>LDS  =&gt; 指针送寄存器和DS寄存器</li>
+<li>LES  =&gt; 指针送寄存器和ES寄存器</li>
+</ul>
+</li>
+<li>标志寄存器传送指令<ul>
+<li>LAHF  =&gt; 标志送AH</li>
+<li>SAHF  =&gt; AH送标志寄存器</li>
+<li>PUSHF =&gt; 标志进栈</li>
+<li>POPF  =&gt; 标志出栈</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><strong>算术指令</strong><ol>
+<li>加法指令<ul>
+<li>ADD  =&gt; 加法<ul>
+<li>ADD DST, SRC =&gt; DST = DST + SRC</li>
+</ul>
+</li>
+<li>ADC  =&gt; 带进位加法<ul>
+<li>ADC DST, SRC =&gt; DST = DST + SRC + Carry (加上进位标志值)</li>
+</ul>
+</li>
+<li>INC  =&gt; 自增(+1)<ul>
+<li>INC OPR =&gt; (OPR) &lt;- (OPR)+1</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>减法指令<ul>
+<li>SUB  =&gt; 减法<ul>
+<li>SUB DST, SRC  =&gt; DST = DST - SRC</li>
+</ul>
+</li>
+<li>SBB  =&gt; 带借位减法<ul>
+<li>SBB DST, SRC  =&gt; DST = DST - SRC - CF(借位)</li>
+</ul>
+</li>
+<li>DEC  =&gt; 自减(-1)<ul>
+<li>DEC OPR</li>
+</ul>
+</li>
+<li>NEG  =&gt; 求补<ul>
+<li>NEG OPR  =&gt; 将操作数按位取反后末尾加一</li>
+</ul>
+</li>
+<li>CMP  =&gt; 比较<ul>
+<li>CMP OPR1, OPR2  =&gt; 执行 OPR1-OPR2 运算, 但只是作为判断标志,
+  不保存结果</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>乘法指令<ul>
+<li>MUL  =&gt; 无符号数乘法</li>
+<li>IMUL =&gt; 带符号数乘法</li>
+</ul>
+</li>
+<li>除法指令<ul>
+<li>DIV  =&gt; 无符号数乘法</li>
+<li>IDIV =&gt; 带符号数乘法</li>
+<li>CBW  =&gt; 字节转化为字</li>
+<li>CWD  =&gt; 字转化为双字</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><strong>逻辑指令</strong><ul>
+<li>AND  =&gt; 逻辑与</li>
+<li>OR   =&gt; 逻辑或</li>
+<li>NOT  =&gt; 逻辑非</li>
+<li>XOR  =&gt; 异或</li>
+<li>TEST(test) =&gt; 测试<ul>
+<li>TEST OPR1, OPR2</li>
+<li>在不改变原有操作数的情况下, 检测某一位或某几位的条件是否满足</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>移位指令</strong></li>
+<li><strong>串处理指令</strong></li>
+<li><strong>控制转移指令</strong><ul>
+<li>JMP 无条件转移指令</li>
+</ul>
+</li>
+<li><strong>中断指令</strong><ul>
+<li>CLI =&gt; 中断标志置0指令</li>
+<li>HLT =&gt; 使机器暂停工作，使处理器CPU处于停机状态，以等待一次外部中断到来，中断结束后，程序继续执行，CPU继续工作。</li>
+</ul>
+</li>
+</ol>
+<p>这[通灵汇编语言]相较于常人的高级语言的确难懂!
+也难怪使用汇编语言的人可以与[神明]交流</p>
+<h3>3. 逛神庙时发现的一个神秘卷轴</h3>
+<p>因为我尝试学习编写的操作系统是[x86 32bit]架构, 所以我此行有2/3的时间在[x86 32bit公国]度过。那段时间正好是公国的祭祀周, 到处都是象征着[万神之神CPU]的图腾
+<img alt="图腾" src="http://7xj431.com1.z0.glb.clouddn.com/images-8.jpeg" /><br/>
+有一次, 经过一个[寄存器神庙]的时候,
+看到一群人围着一个金光闪闪的卷轴在讨论着什么, 于是我便凑了上去。
+原来这个卷轴上写满了Assembly语言奇奇怪怪的符号, 我便把这些符号抄写在了vim上(vim是Assembly王国通用的记载工具类似纸张)。回到家中,
+我拿出vim开始解读(注释部分就是我的解读)</p>
+<pre><code>global _start, _kmain  ;-- global 标记着程序的开始 --
+; -- 一系列的全局变量 --
+; -- ctors(保存着程序中全局构造函数的指针数组)
+; -- dtors(保存着程序中全局析构函数的指针数组)
+extern kmain, start_ctors, end_ctors, start_dtors, end_dtors
+
+; -- 宏定义 --
+%define MULTIBOOT_HEADER_MAGIC  0x1BADB002
+%define MULTIBOOT_HEADER_FLAGS  0x00000003  ; -- flag --
+%define CHECKSUM -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+
+;-- Entry point --
+_start:
+    jmp start  ; -- 无条件转移到_start处
+
+;-- Multiboot header --
+align 4  ; 调整下面代码段中的指针为2^4倍数, 空位自动填充,
+         ; 使得下一条指令出现在能被16整除的地址上,
+         ; 对齐可以使CPU取指令更快
+
+multiboot_header:
+dd MULTIBOOT_HEADER_MAGIC  ; 声明一个4字节, 并将 MULTIBOOT_HEADER_MAGIC
+                           ; 的值存入其中(下同)
+dd MULTIBOOT_HEADER_FLAGS
+dd CHECKSUM
+;--/Multiboot header --
+
+start:
+        push ebx  ; 数据入栈(ebx寄存器)
+
+; -- 开始循环 --
+static_ctors_loop:
+   mov ebx, start_ctors
+   jmp .test
+.body:
+   call [ebx]
+   add ebx,4
+.test:
+   cmp ebx, end_ctors
+   jb .body
+
+   call kmain                      ; call kernel proper
+
+static_dtors_loop:
+   mov ebx, start_dtors
+   jmp .test
+.body:
+   call [ebx]
+   add ebx,4
+.test:
+   cmp ebx, end_dtors
+   jb .body
+
+        ; 中断程序
+        cli ; stop interrupts
+        hlt ; halt the CPU
+</code></pre>
+<p>原来这个卷轴上的符号是加载强大操作系统内核(call kmain)的汇编! <br/>
+就在我迷迷糊糊, 仿佛读懂的那刹那, 突然狂风大作, 天降真神!!!
+原来是[CPU大神]显灵了!!!<br/>
+<img alt="cpu大神" src="http://7xj431.com1.z0.glb.clouddn.com/cpu" /><br/>
+然后CPU大神微笑着对我说:"你个泼猴"...</p>
+<h2>后记:</h2>
+<p>等我醒来的时候, 我已经回到了家中。(但这不是梦!!
+因为我手上还拿着vim!!)。这次Assembly王国探险的经历让我知道了自然世界的伟大,
+原来计算机的宇宙还有这么多不为我知的角落, 不要停下脚步, 继续出发吧!</p>
+    </body>
+</html>

@@ -1,0 +1,124 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>浅谈Python的特性和设计模式</title>
+    </head>
+    <body>
+        <p><img alt="Python" src="http://7xj431.com1.z0.glb.clouddn.com/0eb30f2442a7d9331abfc6f3ad4bd11373f0011e.jpg.png" />
+<hr/></p>
+<h2>面向对象的Python</h2>
+<blockquote>
+<p>Python是一门面向对象的语言</p>
+</blockquote>
+<h3>其实是"一切皆为对象的Python"</h3>
+<p>上面那句话实际上带有很强的误导性, Python与其说是面向对象, 不如说是</p>
+<blockquote>
+<p>一切皆为对象</p>
+</blockquote>
+<p>是的, 在Python中函数是对象、类型是对象, 甚至类也是对象。"一切皆为对象"
+给Python带来了很多有意思的特性: 比如函数可以作为另一个函数的参数,
+函数可以被函数赋值...这些特性也造就了很多有意思的python设计模式:
+装饰器、上下文管理器...</p>
+<h3>面向对象是必须的吗?</h3>
+<p>我之所以说<code>Python是一门面向对象的语言</code>这句话具有误导性,
+是因为面向对象的Python是有用的,但不是必须的。这和Java这门<code>真正的面向对象语言</code>有很大区别,
+所以当你愉快的写完一个python模块时,发现自己没有用面向对象,
+甚至class关键字都没有出现时, 也不必惊讶甚至怀疑,
+因为Python适合的领域并不都是面向对象适合的领域。</p>
+<h3>谈谈函数式编程</h3>
+<p>Python还有一把锋利的刀--函数式编程。函数式就是用一个个功能上相对独立的函数组织代码, 函数之间通过变量和返回值进行互动,
+或者有些情况下根本不需要函数间互动。<br/>
+函数式编程和面向对象编程最大的区别就在于<strong>状态</strong>, 面向对象是通过对象进行操作,
+而对象是状态和行为的整体,
+面向对象会记住一个对象的状态。而函数式编程更看重的是功能即输出,
+状态随便怎么更改都无所谓, 只要有限的状态输入,得到想要的功能输出就可以了。<br/>
+我们以Web环境为例, Web环境一个很大的特性就是<strong>无状态</strong>(或者说频繁的状态更换),
+各个操作的最终目的是为了实现一系列的功能, 如果采用面向对象进行开发,
+那么反而会让程序员在状态更新和功能实现间纠结,
+这时函数式编程显然是更好的模式。<br/>
+或者就是纯功能实现的架构, 这时采用函数式编程显然是更简洁的方法, 比如mana,
+mana其实就是一个命令集和Flask架构的拆分, 没有多少状态需要记录,
+唯一要记录的项目根路径也从函数内部对全局变量的操作改成调用系统<strong>os.getcwd()</strong>纯函数。<br/></p>
+<h2>最美妙的装饰器</h2>
+<p>装饰器是我最喜欢的Python模式没有之一, 因为装饰器是真正的<strong>简洁优雅</strong>,
+装饰器的实现不是偶然, 或者说是立足于 <strong>函数是对象</strong> 和 <strong>@语法糖</strong> 这两个特性: <br/>
+<strong>--&gt; 函数是对象:</strong></p>
+<pre><code>def func():
+    print "I am func, haha"
+
+def decorator(func):
+    print "before func"
+    func()
+    print "after func"
+
+func = decorator(func)
+</code></pre>
+<p><hr/>
+<strong>--&gt; @语法糖:</strong></p>
+<pre><code>func = decorator(func)
+        ||
+        \/
+@decorator
+def func():
+    print "I am func, haha"
+</code></pre>
+<p><strong>@decorator</strong> 就是这么美妙!
+装饰器可以在主函数体(func)不被修改的情况下对主函数进行装饰,
+就像给一个人化妆一样, 或者给他穿上一件好看的衣服,
+当然,在某些情况下就像是给门加上了一块锁。<br/></p>
+<p>我一直在思考能不能写一个纯装饰器式的Python Web框架, APP只要实现wsgi接口,
+剩下的功能视图、路由、前端模版、或者插件集成、中间件集成全部由框架提供的装饰器解决。当然这样写出来的
+代码不一定好看...(头重脚轻)</p>
+<pre><code>@app.add('auth', AuthCode)
+@app.route('/')
+@app.views('index.html')
+@auth.login_requird
+def index():
+    return {}
+</code></pre>
+<h2>上下文管理器</h2>
+<p>上下文管理器和with语句使用,
+程序员只需要关注主要功能实现,对于进入和退出的上下文接口则由上下文管理器自己处理。<br/>
+<strong>--&gt; 类实现</strong></p>
+<pre><code>class MyOpen(object):
+    def __init__(self, filename):
+        self.file = open(filename)
+
+    def __enter__(self):
+        return self.file
+
+    def __exit__(self, ctx_type, ctx_value, ctx_traceback):
+        self.file.close()
+
+with MyOpen('filename') as f:
+    f.read()
+</code></pre>
+<p>MyOpen('filename')会实例化一个Python对象,
+with语句调用<code><strong>enter</strong></code>方法将self.file属性传给f,
+然后在with语句内对f进行操作,
+with结束后会自动调用类的<code><strong>exit</strong></code>方法。</p>
+<p><strong>--&gt; 函数实现(是时候体现装饰器的强大了)</strong></p>
+<pre><code>from contextlib import contextmanager
+
+@contextmanager
+def my_open(filename):
+    file = open(filename)
+    try:
+        yield file
+    finally:
+        file.close()
+
+with my_open(filename) as f:
+    f.read()
+</code></pre>
+<p>这时进入with语句, 会把yield了的file对象传给f,
+然后在with语句内对f对象进行操作,在with语句结束时会调用finally语句的close方法。</p>
+<h2>说说弱类型</h2>
+<p>既然是弱类型, 自然没有纠结的必要。所以切记: <strong>不要在Python中谈论类型</strong>,
+否则你会争论纠结1天(因为第二天你会发现没必要在争了)。</p>
+<p><hr/>
+...the end</p>
+    </body>
+</html>

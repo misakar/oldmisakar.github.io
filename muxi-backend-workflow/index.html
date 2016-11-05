@@ -1,0 +1,149 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>muxi-backend-workflow</title>
+    </head>
+    <body>
+        <h1>木犀后台组工作流</h1>
+<h2>技术, 平台总结</h2>
+<ul>
+<li><strong>开发</strong><ul>
+<li>python</li>
+<li>nodejs</li>
+</ul>
+</li>
+<li><strong>测试</strong><ul>
+<li>siege压力测试</li>
+<li>Travis CI持续集成</li>
+</ul>
+</li>
+<li><strong>监控</strong><ul>
+<li>oneapm服务监控</li>
+</ul>
+</li>
+<li><strong>部署</strong><ul>
+<li>阿里云<ul>
+<li>ECS</li>
+<li>RDS</li>
+</ul>
+</li>
+<li>docker</li>
+</ul>
+</li>
+<li><strong>服务器</strong><ul>
+<li>nginx</li>
+<li>uwsgi</li>
+<li>gunicorn</li>
+</ul>
+</li>
+<li><strong>数据库</strong><ul>
+<li>mysql</li>
+<li>postgresql</li>
+<li>redis</li>
+<li>mongodb</li>
+</ul>
+</li>
+<li><strong>代码托管</strong><ul>
+<li>github</li>
+</ul>
+</li>
+<li><strong>错误处理</strong><ul>
+<li>sentry</li>
+</ul>
+</li>
+</ul>
+<h2>木犀后台组工作流程</h2>
+<ol>
+<li>github上创建项目 HelloWorld<ul>
+<li>依据项目大小和人数选择相应的git策略(是否需要多分支, 是否需要集成测试等.)</li>
+</ul>
+</li>
+<li>创建本地版本库<ul>
+<li>$git clone https://github.com/Muxi-Studio/HelloWorld</li>
+</ul>
+</li>
+<li>创建docker开发环境(使用docker, docker-compose, docker-machine)<ul>
+<li>编写Dockerfile-<a href="https://github.com/restccnu/restccnu/blob/master/Dockerfile">Dockerfile样例</a></li>
+<li>编写docker-compose.yml-<a href="https://github.com/restccnu/restccnu/blob/master/docker-compose.yml">docker-compose.yml样例</a></li>
+<li>build开发环境<ul>
+<li>$ docker-compose build</li>
+</ul>
+</li>
+<li>运行开发环境<ul>
+<li>$ docker-compose up</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>开发<ul>
+<li>coding</li>
+<li>开发过程中频繁提交github</li>
+<li>本地应用直接运行在docker环境中调试</li>
+</ul>
+</li>
+<li>测试<ul>
+<li>最好编写测试(如果不会写测试或者写不好可以(还不如)不写)</li>
+<li>如果编写了测试, 尝试<a href="https://github.com/integrations/travis-ci">集成TravisCi</a></li>
+<li>项目完成到一定阶段可以部署至测试服务器(最好用自己的服务器, 团队服务器就3台, 🙏 正好自己的服务器也可以利用😄 )<ul>
+<li>git clone项目</li>
+<li>配置 <a href="https://github.com/razius/github-webhook-handler">github_web_hook</a></li>
+<li>编写自动脚本, github_web_hook触发后执行以下任务<ol>
+<li>git pull: 更新测试服务器的代码版本库</li>
+<li>docker-compose build: 在测试服务器上build运行环境</li>
+<li>docker-compose up -d: 运行测试后(可以将测试命令添加入docker-compose.yml文件中)在后台运行应用</li>
+<li>docker-compose logs: 查看日志是否启动成功</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>以后只要本地提交至github, 就会自动在测试服务器上 build环境、运行测试、部署应用!</li>
+</ul>
+</li>
+<li>部署<ul>
+<li>部署服务器配置和测试服务器配置相同, 可以不跑测试节约部署时间.</li>
+</ul>
+</li>
+<li>监控(oneapm)<ul>
+<li>服务器监控</li>
+<li>容器监控</li>
+<li>nginx监控</li>
+</ul>
+</li>
+<li>压力测试<ul>
+<li>siege模拟</li>
+</ul>
+</li>
+<li>错误处理<ul>
+<li>配置sentry</li>
+</ul>
+</li>
+</ol>
+<p>最终达成的效果就是可以对应用有很好的把握, 快速的定位错误, 以及自动部署.</p>
+<h2>关于后端应用的思考</h2>
+<h3>为什么要用docker?</h3>
+<p>想来想去, 最主要的就是下面两点
+</br>
+1.不需要麻烦的环境安装 </br>
+使用docker, 应用运行在容器中, 你不再需要在服务器上安装复杂的环境, 直接使用dockerhub上的镜像就行了, 然后用docker-compose link过去.<br/>
+以后团队入手新的服务器(ubuntu系统), 安装docker, docker-compose(使用daocloud的镜像加速器), nginx 就够了(当然还有一些基础的工具)</p>
+<p>2.灵活 </br>
+这是我最看重容器的一点. 这次华师匣子后端的一次"事故", 直接加深了我使用docker的决心, 课表模拟登录跑在一台服务器上, 结果那台服务器网络不稳定, 导致课表服务无法使用, 最简单的方法自然是再加一台服务器做负载, 然而我的数据库是跑在服务器本地的, 课表服务器是直接写在主代码里的需要大量环境依赖和启动几个数据库, 于是我在一个小时内手动剥离课表服务、部署到另外一台服务器、将mongodb跑在公有端口、进行数据迁移, 然后重启应用....是的、全部是在线上....(还好数据没丢). </br>
+如果使用docker就比较方便了, 将课表服务打包到docker中, 需要负载怎么办？</p>
+<pre><code>$ git pull &amp;&amp; docker-compose build &amp;&amp; docker-compose up -d
+$ 配置重启nginx
+</code></pre>
+<p>就搞定了. <br/>
+后端应用非常需要横向扩展能力, 因为你会在线上遇到各种问题, 相信我, 线上环境和测试环境完全是两个东西😢 . 应用程序跑在docker里, 没有了环境依赖的问题, 可以像堆积木一样, 扩展自己的项目.</p>
+<h3>web后端应用的瓶颈到底在哪里?</h3>
+<p>这是题外话了. 直接进入主题: <strong>异步</strong> 和 <strong>缓存</strong>. </br>
+C++也好, python也好, nodejs也好, 处理响应的速度再快, json转换的速度再快, 最多只是快几ms, 而一个I/O请求至少就是1s! web后端如果速度慢, 哪怕UI做的再漂亮, 用户也会骂人、摔电脑、砸手机的... 而提高速度最显著的方法就是异步和缓存. </br>
+缓存就不说了. 说说异步, 你可以将长I/O时间的请求放到任务队列中(进程、线程)执行, 然后任务队列和web应用通信(应用不断请求队列任务状态? 任务执行好了主动通知应用?), 再将执行结果返回给客户端. 或者用现在比较流行的协程, 通过loop不断切换协程达到异步执行的效果.</p>
+<ul>
+<li>asynq</li>
+<li>asyncio</li>
+<li>aiohttp</li>
+</ul>
+    </body>
+</html>

@@ -1,0 +1,258 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>说说Python Web框架</title>
+    </head>
+    <body>
+        <h2>前言</h2>
+<p>我决定在这篇博客中说说Python Web框架, 不谈各个web框架的区别,
+只谈一个web框架实现所需要的点。
+<br/></p>
+<h2>Web框架会处理什么?</h2>
+<p>Python Web框架一般是后端框架, 处理<code>用户输入url(发送http request)到返回http response的过程</code>。
+在用户看来, 只是发送请求和接受响应这两步,
+但是后端框架则需要处理至少<strong>url匹配</strong>; <strong>功能(视图)函数调用</strong>; <strong>数据库查询</strong>; <strong>前端页面渲染</strong>等部分, 还需要
+考虑请求很多的情况下如何不发生阻塞, 某些框架还要实现异步模式。</p>
+<h2>Web框架需要做的</h2>
+<h3>1. 实现Web服务器接口</h3>
+<p>Web框架如果希望其构建的应用能够被用户使用, 那么就需要将应用运行在Web服务器上,
+Python通过WSGI规范定义后端框架与Web服务器间的接口, 这样就可以实现如图所示的情景
+<img alt="images" src="http://7xj431.com1.z0.glb.clouddn.com/images-4.png" />
+不同的WSGI服务器可以运行不同实现WSGI接口的app(框架)</p>
+<h3>WSGI规范</h3>
+<p>WSGI的全称是W(eb)S(erver)G(ate)I(nterface): Web服务器网关接口,
+WSGI只是一个规范, 符合WSGI规范的服务器就可以运行符合WSGI规范的APP。<br/></p>
+<h4>WSGI APP</h4>
+<p>符合WSGI规范的APP,
+需要能够接受WSGI服务器提供的environ环境变量字典和start_response回调函数,</p>
+<pre><code>def application(environ, start_response):
+    """
+    a simple wsgi app
+    environ: a python dict contains request environment
+    start_response: a server side callback function to
+                    get status code &amp; headers
+    """
+    response_body = "this is a wsgi app"
+    status = '200 OK'
+    response_headers = [
+        ('Content-Type': 'text/plain'),
+        ('Content-Length': str(len(response_body)))
+    ]
+    start_response(response_headers, status)
+    return [response_body] # literator object
+</code></pre>
+<h4>WSGI服务器</h4>
+<p>WSGI服务器需要能够调用WSGI应用, 并且可以获取请求环境environ,
+并将environ字典传递给WSGI APP, 同时需要实现一个start_response回调函数用于接受
+APP传递的状态码和响应头。<br/>
+具体代码可以参考<a href="http://python.jobbole.com/81523/">这篇文章</a>实现的一个小型WSGI服务器。</p>
+<h4>WSGI中间件</h4>
+<p>WSGI中间件是一个特殊的存在, WSGI服务器会把WSGI中间件视为application, 而WSGI
+APP则会把WSGI中间件视为server. <br/>
+也就是说, WSGI中间件可以接受server传递的environ字典,
+并将处理后environ传递给WSGI APP, 同时也可以接受WSGI APP返回的服务器端回调,
+并将处理后的回调传递给服务器.<br/>
+所以WSGI中间件可以检验非法的请求, 并且定制响应头。<br/>
+这里的WSGI中间件可以是多层的。<br/>
+这篇博客是关于Web框架的, 所以关于WSGI的很多部分比如environ环境字典,
+start_response回调函数都没有细说,
+更详细关于WSGI<a href="https://segmentfault.com/a/1190000003069785">请戳</a></p>
+<h3>2. 处理用户请求</h3>
+<h4>获取用户发送的请求信息</h4>
+<p>python
+web框架可以从WSGI服务器提供的environ环境变量字典中获取用户发送的请求信息,
+比如Flask框架通过request对象获取http request信息,
+request对象实际上就是对environ的处理, 我们可以构建一个简单的request对象:</p>
+<pre><code>from werkzeug.test import test_environ
+from werkzeug import Request
+
+request = Request(test_environ)
+
+&gt;&gt; request.headers
+&gt;&gt; request.status
+......
+</code></pre>
+<h4>匹配用户请求地址(URL)调用视图函数进行处理</h4>
+<p>匹配用户输入的URL就是根据用户输入的URL调用相应的函数进行处理。<br/>
+首先我们先分析一下URL:</p>
+<pre><code>URL是统一资源定位符, 区别于URI(统一资源标志符),
+URL可以在互联网上唯一标识并找到一个资源。
+</code></pre>
+<p>URL由如下几个部分构成</p>
+<ol>
+<li>访问协议<ul>
+<li>http/https/ftp/smtp</li>
+</ul>
+</li>
+<li>主机名<ul>
+<li>ip地址/域名</li>
+</ul>
+</li>
+<li>端口</li>
+<li>资源在主机上的具体路径path</li>
+<li>查询参数 ?querystring=haha</li>
+</ol>
+<p>对于同一个的Web应用, 不同url的访问协议、主机名、端口基本是固定的,
+框架需要关注的就是path和查询参数, 当然查询参数不是必须的。<br/>
+web框架根据path就可以知道需要寻找和返回哪个资源, 给出response headers和body。
+有时候资源的请求会比较复杂,
+比如用户会动态的在url中传入参数以获取或者修改资源。这时就需要引入一种机制去动态处理用户输入的URL,
+从而获取用户希望传入什么参数,获取哪个资源, 这种机制就是<strong>正则匹配</strong>。<br/>
+使用<strong><a href="http://www.regular-expressions.info/quickstart.html">正则表达式</a></strong>可以将路径作为一种模式而不是固定的字符串进行匹配。<br/>
+我们以<code>/username/<string:username>/</code>这个url匹配为例:</p>
+<pre><code># 使用python的re模块
+import re
+
+url_regex = re.compile(r"^/username/(.+)$")
+match = url_regex.match("/username/neo1218")
+
+print match.groups()
+
+# result: ('neo1218',)
+</code></pre>
+<p>我们已经成功的获取用户传入的username值。<br/>
+我们可以更进一步, 优化匹配的输出, 使用正则的<strong>命名捕获组</strong>:</p>
+<pre><code>......
+url_regex = re.compile(r"^/username/(?P&lt;username&gt;.+)")
+......
+
+# result: {'username': 'neo1218'}
+</code></pre>
+<p>现在知道了如何匹配用户的动态url,
+框架就需要实现相应的<code>build_url_regex方法</code>从而根据用户定义的url格式生成匹配的正则表达式:</p>
+<pre><code>def build_url_regex(url):
+    url_regex = re.sub(r'(&lt;\w+&gt;)', r'(?P\1.+)', url)
+    return re.compile("^{}$".format(url_regex))
+
+build_url_regex('/username/&lt;username&gt;')
+
+# result: ^/hello/(?P&lt;username&gt;.+)$
+</code></pre>
+<p>现在, 一个Python
+Web框架就可以根据用户定义的URL生成相应的正则并用这个正则表达式去匹配用户在浏览器中输入的实际模式串, 拿到
+传入参数, 进行处理。<br/>
+当然框架有权选择是否将正则表达式直接暴露给框架的使用者, 我以Django和Flask为例:<br/>
+Flask没有让程序员直接去写正则,
+而是在werkzeug库中实现了我上面介绍的build_url_regex方法,
+在flask中则是实现了一个<strong>route装饰器</strong>, route装饰器的基本原理就是建立<strong>url</strong>, <strong>视图函数</strong>, <strong>端点</strong>
+三者之间的关系, 这样通过输入的url,确定相应的端点, 就可以调用相应的视图函数,
+反之通过视图函数就可以构建url。上源码(省略掉了部分官方注释):</p>
+<pre><code>"""flask app.py"""
+def route(self, rule, **options):
+    """
+    flask route装饰器
+    :param rule:  URL(字符串的形式)
+    :param endpoint:官方解释如下:
+           the endpoint for the registered URL rule.  Flask
+           itself assumes the name of the view function as endpoint
+           端点实际上就是url在框架内部的表示, 默认是视图函数的名字,
+           用户可以自定义
+    :param options: 定义HTTP方法组 (GET, POST, OPTIONS, HEAD...)
+    """
+    def decorator(f):
+        endpoint = options.pop('endpoint', None)  # 确定端点
+        # 建立端点, url, 视图函数三者间的关系
+        self.add_url_rule(rule, endpoint, f, **options)
+        return f
+    return decorator
+
+"""flask app.py"""
+@setupmethod
+def add_url_rule(self, rule, endpoint=None, view_func=None, **options):
+    """注册url, 处理HTTP方法, 添加端点和视图函数的关系字典"""
+    if methods is None:
+        methods = getattr(view_func, 'methods', None) or (GET', )
+    if isinstance(methods, string_types):
+        raise TypeError('Allowed methods have to be iterables of strings,
+                         for example: @app.route(..., methods=["POST"])')
+    methods = set(item.upper() for item in methods)
+    required_methods = set(getattr(view_func, 'required_methods', ()))
+    provide_automatic_options = getattr(view_func,
+        'provide_automatic_options', None)
+    if provide_automatic_options is None:
+        if 'OPTIONS' not in methods:
+            provide_automatic_options = True
+            required_methods.add('OPTIONS')
+        else:
+            provide_automatic_options = False
+    methods |= required_methods
+    rule = self.url_rule_class(rule, methods=methods, **options)
+    rule.provide_automatic_options = provide_automatic_options
+
+    self.url_map.add(rule)
+    if view_func is not None:
+        old_func = self.view_functions.get(endpoint)
+        if old_func is not None and old_func != view_fun:
+            raise AssertionError('View function mapping is overwriting an '
+                                 'existing endpoint function: %s' % endpoint)
+        self.view_functions[endpoint] = view_func
+
+"""flask app.py"""
+self.view_funcions = {}
+</code></pre>
+<p>正则表达式的部分则被封装在了werkzeug层, flask框架的使用者是感觉不到的。<br/>
+django这块我还没有研究过, 先把坑挖在这里吧。</p>
+<h3>3. 处理HTTP方法</h3>
+<p>框架获取HTTP方法其实不难, 因为HTTP方法一般都是程序员显式提供的,
+从上面<code>add_url_rule</code>函数中可以看到flask是如何获取methods的, 以及如何处理必须提供的方法,
+当然还有方法提供的形式['method1', 'method2']和存储的形式set集合。</p>
+<h3>4. 实现数据库接口</h3>
+<p>数据基本上是存储在数据库中的, 一个后端框架只有实现了数据库接口才可以连接数据库进行数据存储。<br/>
+连接一个数据库是需要一些必要条件的, 以mysql为例,
+连接数据库需要mysql用户名、密码、数据库模式名,
+可以将这些信息作为属性用于db对象的实例化, 既可以保存状态,
+又可以通过实例化全局的db对象对数据库进行操作。<br/>
+sql语句是关系型数据库操作的核心,
+所以db模块需要封装sql语句,函数是封装sql语句最好的方式,
+因为一个函数就是一个操作。 sql操作可以分为两大类: 查询、操作,
+所以我们可以定义两大类函数: select 和 update,
+然后将sql语句作为函数参数进行传递,
+当然对于操作的数据库对象可以另定义参数。比如:</p>
+<pre><code>from webframework import db
+
+db.select('select * from users')
+db.update('insert into users(id, name) value(?, ?)', 4, 'neo1218')
+</code></pre>
+<p>而且, 为了方便数据交流, 完全可以使用json的方式表示查询得到的数据库数据, 比如:</p>
+<pre><code>db.select('select * from users')
+
+[
+    {'id': 1, 'username': 'neo1218'},
+    {'id': 2, 'username': 'zxc0328'},
+    {'id': 3, 'username': 'mitsuhiko'}
+]
+</code></pre>
+<p>如果每次编写数据库操作都需要手动连接数据库, 然后关闭数据库,
+这显然是对程序员不友好的, 对于上下文的连接控制我们自然想到使用装饰器(ps:
+装饰器是我的最爱!因为暴露的API十分简洁), 就像这样:</p>
+<pre><code>@with_connection
+def do_sth():
+    db.select('xxxxxxxx')
+    db.update('xxxxxxxx')
+</code></pre>
+<p>在<code>with_connection</code>装饰器中, 我们就可以处理<code>db.connect</code>,
+以及断开数据库连接后的上下文销毁。
+<br/>
+db模块一般在框架中内置实现, 我们也可以让自己的框架兼容主流的orm,
+最好的Python Orm是<a href="https://github.com/zzzeek/sqlalchemy">SQLALCHEMY</a>。</p>
+<h3>5. 实现前端模版</h3>
+<h3>6. 处理http响应</h3>
+<p>框架对用户的请求进行一系列处理后, 最终的目的还是为了把响应传给请求者,
+一个明确的响应需要有清晰的请求头, 简单的状态码,
+以及必要的响应体。所以一个web框架至少应该支持响应头定制、自定义状态码。其实这个不难实现,
+相应头其实就是一个字典, 状态码也可以直接传给响应。比如:</p>
+<pre><code>@view(app, '/index')
+def index():
+    return json({
+        'username': 'neo1218'
+    }), 200, {'User-Agent': 'xxxxxxxxxxxxx'}
+</code></pre>
+<p>或者就把response当作响应对象, 直接对对象进行操作。</p>
+<h2>后记</h2>
+<p><hr/>
+<strong>未完待续</strong>
+<hr/></p>
+    </body>
+</html>

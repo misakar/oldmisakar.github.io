@@ -1,0 +1,155 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>RE;从零开始的算法分析</title>
+    </head>
+    <body>
+        <h1>RE: 从零开始的算法分析</h1>
+<p><strong>这一篇博客让我回忆起高考结束的那个暑假, 看《数学分析》的日子.</strong>
+<hr></p>
+<h2>人类的理性思维: 自然科学思想应用于计算机</h2>
+<p>我生活在大自然中, 早已麻木习惯了. 但总有那么一批人, 我曾经崇敬的人们, 不遗余力的探索这个世界的规律: 物理、化学、生物、生命学(生命动力学原理, 听起来很玄乎, 但是我的一个老师就研究这个, 而且基于统计学得出了一些成果, 很辛苦, 已经过世了, 近5年应该不会被认可, 但是我有点相信这个理论: 输入、扰动、输出决定人的关键时刻, 那句"月亮代表我的心"其实是"月亮影响我的心"...).这一批批人类在探索自然的过程中总结了一套标准流程: <strong>科学方法</strong></p>
+<pre><code>提出问题-&gt;进行实验-&gt;观察结果-&gt;得出结论-&gt;比对猜想
+</code></pre>
+<p>这里的实验有一个关键特性: 可重现, 只要基础的自然规律不变, 那么这个实验在任何时间、任何人做, 结论都应当是一致的. <br/>
+科学方法可以应用到算法的研究中, 基于数学分析和实验可以得出关于算法的一些结论.</p>
+<h3>这不是偶然</h3>
+<p>谁说这是偶然呢? 自然就是一个巨大的计算机.</p>
+<h2>提出问题: 3-sum problem</h2>
+<p>3-sum问题的大意是: <code>如何统计输入流(ex:一个文件)中所有和为0的三整数元组的数量?(假设整数不会溢出)</code><br/>
+最简单的方法自然是依次遍历, 相加比证:</p>
+<pre><code>public class ThreeSum
+{
+    public static int count(int[] a)
+    {
+        int N = a.length;
+        int cnt = 0;
+        for(int i = 0; i &lt; N; i++)
+            for(int j = i+1; j &lt; N; j++)
+                for(int k = j+1; k &lt; N; k++)
+                {
+                    if((a[i] + a[j] + a[k]) == 0)
+                        cnt++;
+                }
+        return cnt;
+    }
+
+    public static void main(String[] args)
+    {
+        int[] a = In.readInts(args[0]); // args[0] 为文件名
+        StdOut.println(count(a))
+    }
+}
+</code></pre>
+<h2>如何测量? 实现计时器</h2>
+<p>现在我们得到了3-sum问题的实现代码, 那么这个算法面对大量数据时需要运行多少时间? 有没有更快的算法? 因此, 我们需要利用Java的currentTimeMillis方法实现计时器, 该方法可以返回以毫秒为单位的时间.</p>
+<pre><code>public class TimeWatch
+{
+    private final long start; // 起始时间, 将start声明为final, 在此对象中不可多次初始化
+    public TimeWatch()
+        { start = System.currentTimeMillis(); }
+    public double elapsedTime()    
+    {
+        long now = System.currentTimeMillis();
+        return (now - start) / 1000.0;
+    }
+}
+</code></pre>
+<p>这个计时器在创建时通过构造函数将起始时间保存在start中, 调用elapsedTime方法时返回程序运行的差值时间. 不过创建对象从调用构造函数到完成创建还是有点时间的.</p>
+<h2>实验数据构造: 随机数生成器</h2>
+<p>有了代码, 有了计时器, 就可以进行实验和测量了. 不过我们希望实验验证处理的是大量数据1000、10000、100000级别的数据, 而且希望可以从问题规模的增长中看出程序运行时间的变化, 方便作图得出直观结论. 所以我们还要实现一个输入流生成器, 输入流的规模会随着程序的运行不断加倍, 达到动态增长的效果.</p>
+<pre><code>public class DoublingTest
+{
+    public static double timeTrial(int N)
+    {   // 生成特定问题规模N的输入流数组a
+        // 对ThreeSum处理a计时
+        int Max = 1000000;
+        int[] a = new int[N];
+        for(int i = 0; i &lt; N; i++)
+            a[i] = StdRandom.uniform(-MAX, MAX); // 生成随机数
+        TimeWatch timer = new TimeWatch();
+        int cnt = ThreeSum.count(a);
+        return timer.elapsedTime();
+    }
+
+    public static void main(String[] args)
+    {   // 输出 程序运行时间-输入规模 表格
+        for(int N = 250; true; N += N)
+        {
+            double time = timeTrial(N);
+            StdOut.printf("%7d %5.1f\n", N, time);
+        }
+    }
+}
+</code></pre>
+<h2>实验结果预估: 直观的函数图像</h2>
+<p>有了自变量(输入流规模)和因变量(程序运行时间), 我们就可以作出图像, 图像是直观的, 直观于得出结论和相互比较.</p>
+<h2>抽象~数学模型~增长数量级~近似运行时间</h2>
+<p>计算机时代的早期, 就有科学家尝试确定程序的运行时间, D.E.Knuth认为:</p>
+<blockquote>
+<p>尽管有许多复杂的因素影响着我们对程序的运行时间的理解, 原则上我们仍然可能构造出一个数学模型来描述任意程序的运行时间</p>
+</blockquote>
+<p>他认为一个程序运行的总时间主要和两点有关:<br/></p>
+<ol>
+<li>执行每条语句的耗时</li>
+<li>执行每条语句的频率</li>
+</ol>
+<p>执行语句的耗时主要取决于计算机系统和jvm(使用java语言的话);<br/>
+而语句执行的频率是不确定的, 比如ThreeSum中, if语句执行的次数是C(N, 3) = N(N-1)(N-2)/6, 而cnt++执行的次数则和随机输入有关, 需要通过寻找随机输入流的规律进行估算.<br/>
+当然, 如果我们知道了程序中每条语句的耗时和频率, 那么相乘相加、相爱相杀就可以得到程序运行的总时间.</p>
+<h2>数学模型</h2>
+<p>ThreeSum中if语句的执行次数是C(N, 3), 展开后得: <code>N^3/6 - N^2/2 + N/3</code>, 不妨设f(N) = C(N, 3), 则 R = f(N)/(N^3/6) 当N趋向于无穷大时R无限逼近1, 设g(N) = N^3/6, 那么这种关系可以用f(N)~g(N)表示, g(N)称为f(N)得增长数量级, 这样可以实现对<strong>频率的近似</strong>
+<br/>
+显而易见的是: 执行最频繁的指令决定了程序运行的总时间, 所以我们可以对<strong>时间近似</strong>. 这样最频繁语句的增长数量级应该可以近似的表明算法的运行时间和问题规模的关系.(ps:算法执行的时间效率)</p>
+<h2>验证: 理想和现实的摩擦</h2>
+<p>根据实验结果图, 算法运行时间和问题规模的关系确实是指数数量级的关系.</p>
+<h3>在这无聊的世界摩擦</h3>
+<p>早上走在路上, 所有人都朝着特定的方向走, 周围似乎都是静止的, 人们就像某飞行动物一样往前冲. 没有人会对视你的眼睛, 甚至报以微笑, 毕竟我们不熟...无聊的世界, 连点赞的权利都被剥除.</p>
+<h2>分析实验结果: 从零开始的算法分析</h2>
+<p>实验验证了我们的猜想: 我们可以通过近似使用最频繁的语句的增长数量级来分析算法. 这是一个有意思的结论, 这意味着无论使用java还是python还是C, 无论使用何种计算机, 算法分析的对象都是唯一且独立的. 也就是说, 在分析算法的过程中, 可以将算法和程序分离!</p>
+<h2>算法的魔力</h2>
+<p>知道了怎么快, 那么如何更快? ThreeSum问题的关键在于3个整数a[i], a[j], a[k]的和为0, 如果将每次遍历的操作改为归并排序+二分搜素, 即搜索是否存在-(a[i] + a[j])存在于a中, 且搜索项的下标大于j(避免重复计数), 就可以将增长数量级由N^3降为NlogN(归并排序:NlogN, 二分搜索logN).<br/>
+BinarySearch:</p>
+<pre><code>public class BinarySearch
+{
+    public static int rank(int key, int[] a)
+    {
+        int lo = 0;
+        int hi = a.length - 1;
+        while(lo &lt;= hi)
+        {
+            int mid = lo + (hi-lo)/2;
+            if      (key &lt; a[mid])  { hi = mid - 1; }
+            else if (key &gt; a[mid])  { lo = mid + 1; }
+            else                    { return mid; }
+        }
+        return -1;
+    }
+}
+</code></pre>
+<p>ThreeSumFast</p>
+<pre><code>import java.util.Arrays;
+public class ThreeSumFast
+{
+    public static int count(int[] a)
+    {
+        Arrays.sort(a);  // 归并排序
+        int N = a.length;
+        int cnt = 0;
+        for(int i = 0; i &lt; N; i++)
+            for(int j = i+1; j &lt; N; j++)
+                if (BinarySearch.rank(-a[i]-a[j], a) &gt; j)
+                    { cnt++; }
+    }
+}
+</code></pre>
+<h3>呵呵, 算法出奇迹</h3>
+<p>要知道, 随着输入流规模N的增长, NlogN的增长速率可是远低于N^3! 所以说: 算法出奇迹...</p>
+<h2>附表(参考《算法》第4版)</h2>
+<h3>算法分析中的常见函数</h3>
+<h3>算法分析中的常用近似函数</h3>
+<h3>对增长数量级的常见假设总结</h3>
+    </body>
+</html>

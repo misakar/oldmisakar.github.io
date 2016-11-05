@@ -1,0 +1,112 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>C10K问题</title>
+    </head>
+    <body>
+        <p>最近在着手编写一个异步的Python Web框架<a href="https://github.com/LeicsFrameWork/Leics.git">Leics</a>,
+目标之一就是希望很好的解决C10K和并发处理的问题。
+最终达到可以处理10000+并发连接, 并且视图处理是非阻塞的(基于协程调度)。<br/>
+这篇文章将总结一下解决C10K问题的几种方法, 以及相关底层概念的介绍,
+最后说明我选择协程模型的原因。
+<hr/></p>
+<h2>C10K问题</h2>
+<blockquote>
+<p>The C10k problem is the problem of optimising network sockets to handle a large
+number of clients at the same time.[1] The name C10k is a numeronym for concurrently
+handling ten thousand connections.[2] Note that concurrent connections are not the
+same as requests per second, though they are similar: handling many requests per
+second requires high throughput (processing them quickly), while high number of
+concurrent connections requires efficient scheduling of connections. (维基百科)</p>
+</blockquote>
+<p>C10K问题本质上是操作系统的问题! 对于Web1.0/2.0时代的操作系统而言, 传统的同步阻塞I/O模型都是一样的,
+处理的方式都是<code>requests per second</code>, 并发10K和100的区别关键在于CPU!
+创建的进程线程多了, 数据拷贝频繁(缓存I/O, 内核将数据拷贝到用户进程空间, 阻塞), 进程/线程上下文切换消耗大,
+导致操作系统崩溃, 这才是C10K问题的本质!<br/>
+可见, 解决C10K问题的关键就是尽可能减少这些CPU资源消耗。</p>
+<h2>解决方案</h2>
+<h3>方案一: 无连接</h3>
+<p>TCP协议会创建socket, 每个socket是一个进程或线程, 从而消耗CPU资源。如果采用无连接的协议就可以绕过C10K问题了,
+使用UDP代替TCP协议是个办法,
+尤其是关心数据的传输速度而不是准确性的时候。腾讯QQ就采用了这种方案,
+具体可以看这个<a href="https://www.zhihu.com/question/20292749">知乎: QQ为什么采用UDP协议，而不采用TCP协议实现?</a><br/>
+<a href="http://feinibuke.blog.51cto.com/1724260/340272">补充:TCP和UDP的区别</a></p>
+<h3>方案二: 每个进程/线程同时处理多个连接(I/O多路复用)</h3>
+<p>进程和线程的开销是昂贵的, 每个进程或线程处理一个连接就更显奢侈了,
+I/O多路复用可以有效的减少CPU资源消耗。 <br/></p>
+<h4>select</h4>
+<p>select是内核级别的调用, select可以同时监听多个I/O端口, 当任何一个socket数据准备好了,
+select就可以返回可读条件, 然后用户进程调用recvfrom函数,
+内核将socket数据从内核缓冲区复制到用户进程地址空间。而且, 由于select是内核级别的,
+所以select知道内核缓冲区中什么时候<code>有数据</code>,
+一旦有数据select就会返回可读条件,
+这个机制有效的解决了select的阻塞问题(select会阻塞其他进程)<br/>
+select的最大缺点在于单个进程能够监视的文件描述符(用户进程每操作一个文件都会返回一个文件描述符整数,
+作为进程文件描述符表的索引, 存在<a href="http://baike.baidu.com/subview/3672/15988026.htm">PCB</a>中)的数量存在最大限制，在Linux上一般为1024。<br/></p>
+<h4>poll</h4>
+<p>poll本质上和select没有区别, 只是<code>采用链表存储解决了最大连接数的限制。</code><br/>
+从上面看，select和poll都需要在返回后，<code>通过遍历文件描述符</code>来获取已经就绪的socket。
+事实上，同时连接的大量客户端在一时刻可能只有很少的处于就绪状态，因此随着监视的描述符数量的增长,
+select和poll的效率也会线性下降。</p>
+<h4>epoll</h4>
+<p>C10K问题的杀手级解决方法epoll出现了。<br/>
+epoll是select和poll的加强版,
+epoll相比于select、poll的最大区别是epoll没有监听所有的文件描述符,
+epoll只管活跃的(描述符发生变化)文件描述符, 也就是说epoll并没有采用轮询的机制,
+所以在实际的环境中epoll的效率要远高于select和poll。<br/>
+epoll使用"事件"的就绪通知方式,通过epoll_ctl注册文件描述符fd，一旦该fd就绪，内核就会
+采用类似callback的回调机制来激活该fd, epoll_wait便可以收到通知, 并通知应用程序。<br/>
+而且epoll使用一个文件描述符管理多个描述符,将用户进程的文件描述符的事件存放到内核的一个事件表中,
+这样数据只需要从内核缓存空间拷贝一次到用户进程地址空间。效率大大提高!<br/>
+epoll只能在Linux平台上使用, 但是谁会不用Linux服务器呢?:)<br/></p>
+<h4>select、poll、epoll对比</h4>
+<p>(图表取自伯乐在线文章:见参考)<br/>
+1. 支持一个进程所能打开的最大连接数<br/>
+<img alt="p1" src="http://jbcdn2.b0.upaiyun.com/2016/04/aed07b26c8d274bf1643f92f0b06f8e0.png" /><br/>
+2. 文件描述符剧增后带来的效率问题<br/>
+<img alt="p2" src="http://jbcdn2.b0.upaiyun.com/2016/04/aa63ee401de8fb25d11a45d47d2f7dcd.png" /><br/>
+3. 消息传递方式<br/>
+<img alt="p3" src="http://jbcdn2.b0.upaiyun.com/2016/04/677b2e78b85099b342e71bfda4e027b6.png" /><br/></p>
+<h4>I/O多路复用总结</h4>
+<p>I/O多路复用时, select、poll、epoll虽然可以监听多个socket,
+但是select、poll、epoll本身是阻塞的,
+用户进程仍然是主动发送系统调用(recvfrom)进行数据拷贝,
+所以I/O多路复用是同步阻塞模型。</p>
+<h3>方案三: 协程</h3>
+<p>C10K问题的瓶颈在于内核,
+进程/线程作为处理单元还是太重,系统调度的代价太高。协程的出现就很好的解决了这两个瓶颈。<br/>
+每个协程所独占的系统资源往往只有栈部分。而且，各个协程之间的切换，是通过用户代码来显式切换, 没有内核的调度,
+所以协程实际上不仅仅可以处理10K连接, 10M都可以!</p>
+<h3>方案四: 事件驱动</h3>
+<p>事件驱动模型: 所有请求以及同时传入的回调函数均发送至同一线程，该线程通常叫做 Event loop
+线程，该线程负责在 I/O 执行完毕后，将结果返回给回调函数。注意 I/O
+操作本身并不在该线程内执行，所以不会阻塞后续请求。<br/>
+事件驱动是单线程的,
+没有任何切换开销。如果底层在加上epoll回调处理机制就可以很好的解决C10K问题。
+当然过多的回调就会陷入所谓的"回调地狱"。</p>
+<h2>leics方案</h2>
+<p>leics准备基于<code>werkzeug + gevent</code>进行开发,
+werkzeug处理wsgi和请求匹配分发, gevent将视图处理函数变成协程, 类似一个中间层,
+编写主循环(Hub)和操作系统(epoll)交互, 从而达到</p>
+<ol>
+<li>同时处理并发1000+</li>
+<li>视图函数非阻塞, 不会因为某个视图挂了就影响整个web应用</li>
+</ol>
+<p>leics的目标是快速、异步、面向生产。快速的创建和编写项目,
+具备比较好的性能,快速的进行部署。<br/>
+<img alt="leics" src="http://www.kaiwind.com/sports/tygc/201512/14/W020151214470145275264.jpg" /></p>
+<h2>参考</h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/C10k_problem">维基百科: C10K Problem</a></li>
+<li><a href="https://www.zhihu.com/question/20292749">知乎:QQ 为什么采用 UDP 协议，而不采用 TCP协议实现？</a></li>
+<li><a href="http://feinibuke.blog.51cto.com/1724260/340272">TCP和UDP的区别</a></li>
+<li><a href="http://baike.baidu.com/subview/3672/15988026.htm">百度百科: PCB</a></li>
+<li><a href="http://blog.jobbole.com/99905/#comment-156449">聊聊Linux中的五种I/O模型</a></li>
+<li><a href="http://baike.baidu.com/view/1303430.htm">文件描述符和文件指针的区别</a></li>
+<li><a href="http://blog.jobbole.com/99912/">聊聊IO多路复用之select、poll、epoll详解</a></li>
+<li><a href="https://www.ibm.com/developerworks/cn/web/1201_wangqf_nodejs/">被误解的 Node.js</a></li>
+</ul>
+    </body>
+</html>

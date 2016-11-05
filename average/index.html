@@ -1,0 +1,87 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>算法均摊分析</title>
+    </head>
+    <body>
+        <h1>算法均摊分析</h1>
+<p>首先来复习一下关于下压栈的动态数组实现:</p>
+<pre><code>import java.util.Iterator;
+public class ResizeArrayStack&lt;Item&gt; implements Iterator&lt;Item&gt;
+{
+    private Item[] a = (Item[]) new Object[1];  // 初始化为动态数组大小为1
+    private int N;  // 栈中元素的个数
+    public boolean isEmpty()
+        { return N == 0; }
+    public int size()
+        { return N; }
+    public void resize(int max)
+    {
+        Item[] temp = (Item[]) new Object[max];
+        for (int i = 0; i &lt; N; i++)
+            temp[i] = a[i];
+        a = temp;  // a扩容, 多余为null
+    }
+    public void push(Item item)
+    {
+        if (a.length == N)
+            { resize(a.length*2); }
+        a[N++] = item;
+    }
+    public item pop()
+    {
+        Item item = a[--N];
+        a[N] == null;  // item 置为null, 避免对象游离
+        if (N == a.length*1/4)
+            { resize(a.length*1/2); }
+        return item;
+    }
+    public Iterator&lt;Item&gt; iterator()
+    {
+        // 实现迭代器接口
+        return new ReverseArrayIterator();
+    }
+    private class ReverseArrayIterator
+    {
+        // 实现逆向迭代器类
+        private int i = N;
+        public boolean hasNext() { return N &gt; 0;  }
+        public Item    next()    { return a[--i]; }
+        public void    remove()  {                }
+    }
+}
+</code></pre>
+<p>分析这个程序, 可以得出如下结论: <br></p>
+<ol>
+<li>每项操作的用时都与集合大小无关(因为数组规模是在动态改变的)</li>
+<li>空间需求总是不超过集合大小乘以某个常数</li>
+</ol>
+<p>但是, 这个程序的运行效率是与输入的状态相关的, 下面我们考虑一种极端的情况: 假设数据结构初始为空, 那么N次连续的push()调用需要访问数组多少次?
+<hr>
+分析这个问题可以从push操作入手:<br/></p>
+<ol>
+<li>第一次push的时候a.length==1==N, 数组扩容访问2次数组, a.length==2, 然后入栈访问一次数组</li>
+<li>第二次push的时候a.length==2==N, 数组扩容访问4次数组, a.length==4, 然后入栈访问一次数组</li>
+<li>第三次push的时候a.length==4!=N==3, 入栈访问一次数组</li>
+<li>第四次push的时候a.length==4==N, 数组扩容访问8次数组, a.length==8, 然后入栈访问一次数组
+..... <br></li>
+</ol>
+<p>我们很容易推导出其中的规律:</p>
+<pre><code>count = N + 2 + 4 + 8 + ... + 2N
+</code></pre>
+<p>简化一下, 不妨假设N为2的幂, 根据等比数列求和公式: <code>1+2+4+8+...+N=2N-1</code> (N=2^n) 推导出</p>
+<pre><code>count = N + 4N-2 = 5N-2 ~ 5N
+</code></pre>
+<p>所以我们可以得出: <code>N次push访问数组的平均次数是常数, 而最后某几次访问数组的次数是线性</code><br/>
+这就是一种<code>均摊</code>, 即<strong>通过大量的廉价操作将少量昂贵操作摊平!</strong> <br></p>
+<p>由此我们可以得出命题:</p>
+<pre><code>在基于动态数组的栈结构中, 对空数据结构所进行的任意操作序列对数组的平均访问次数在最坏情况下均为常数!
+</code></pre>
+<p>证明:</p>
+<pre><code>因为每次push或者pop操作对数组的最坏访问次数都是线性的, 即 aN+b 的形式,
+所以通过廉价操作的均摊, 任意操作序列对数组的平均访问次数均为常数!
+</code></pre>
+    </body>
+</html>

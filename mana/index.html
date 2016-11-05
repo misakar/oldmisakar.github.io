@@ -1,0 +1,134 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>mana开发手记</title>
+    </head>
+    <body>
+        <h1>mana涉及的技术栈</h1>
+<p>开发mana用到了以下技术</p>
+<ol>
+<li><strong>Flask</strong><ul>
+<li>Flask-Script</li>
+<li>Flask-Migrate</li>
+<li>Flask-Sqlalchemy</li>
+<li>Flask-Login</li>
+<li>Flask-WTF</li>
+<li>Flask-Admin</li>
+</ul>
+</li>
+<li><strong>click</strong></li>
+<li><strong>python</strong></li>
+</ol>
+<h1>mana开发中的问题</h1>
+<p>在写mana的过程中, 有几个问题比较困扰我</p>
+<h2>1. 兼容性</h2>
+<p>我一开始写mana是只能用在类unix系统上的(linux, mac),
+还美其名约"抛弃Windows"...但flask是跨平台的,
+flask编写的web应用也是跨平台的,所以mana作为构建flask项目的工具自然也要跨平台,
+这里跨平台又涉及两个概念:</p>
+<ol>
+<li>mana 本身跨平台</li>
+<li>mana构建的flask项目跨平台</li>
+</ol>
+<p>第二点flask框架已经实现了, 所以我需要实现第一点。<br/>
+实现第一点需要考虑mana作为一个项目构建工具的特点: 自动构建目录(文件夹)和文件,
+我之所以一开始只能用在类unix系统上, 是因为大量使用了unix系统命令, 比如:</p>
+<pre><code>import os
+os.popen('mkdir app')
+os.system('touch app.py')
+</code></pre>
+<p>如果我使用python的内置模块,就可以很好的解决兼容性问题, 而且使用内置模块,
+我可以定义函数进行包装, 从而简化代码编写,检查创建条件,
+于是我实现了这两个operator: <br/>
+1. mkdir_p:</p>
+<pre><code>import os, errno
+
+def _mkdir_p(abspath):
+    """
+    Usage:
+        create the abspath
+        except the abspath exist
+    Param:
+        abspath: the absolutly path you want to be created
+    """
+    try:
+        os.makedirs(abspath)
+    except OSError as e:
+        if (e.errno == errno.EEXIST) and (os.path.isdir(abspath)):
+            pass
+        else: raise
+</code></pre>
+<p>这个operator使用了python内置函数<code>os.makedirs</code>,
+外层的封装可以确保即使abspath存在也会创建(覆盖)目录,
+这样可以把目录创建过程中的检查转移到专门的log函数中, 避免重复检查. <br/>
+2. init_code</p>
+<pre><code>def init_code(filename, init_code):
+    """create and write init code in a file"""
+    with open(filename, 'w+') as f:
+        f.write(init_code)
+</code></pre>
+<p>这个operator使用了python上下文管理器以及文件操作用于创建文件,
+同时封装的这层<code>init_code</code>函数可以在创建文件后自动写入初始代码,
+搭配上下文管理器的自动检查关闭, perfect ! <br/>
+这样, 虽然代码多写了一点, 但是实现了对Windows系统的兼容。</p>
+<h2>2. flask开发规范</h2>
+<p>开发规范(或者最佳实践)这个问题困扰我,
+是因为flask根本就没有开发规范...首先,flask app本身就有很多创建的方式(蓝图、create_app),
+而且绝大多数的功能被分散到相应的扩展中. 为了解决这个问题, 我采用了如下几个方法:</p>
+<ol>
+<li>
+<p><strong>只使用flask扩展</strong></p>
+<ul>
+<li>其实这样做有点不负责任(另技术水平达不到),
+  既然flask的规范被功能分散到相应的扩展,
+那么我把扩展直接丢给使用者吧,不清楚的地方直接查扩展的文档,至少我不用在README里长篇大论什么才是最佳实践</li>
+</ul>
+</li>
+<li>
+<p><strong>依据功能分类</strong></p>
+<ul>
+<li>我主要构建两大类flask项目 含(不含)数据库, 不含数据库的项目又可分为单文件,
+  多文件夹, 配置分离。我采用的是第二种, 单文件自然无须构建,
+根据我的开发经验, 不含数据库的项目一般没有太多的配置, 所以我就没有配置分离了,
+当然这一点可以在构建后自行更改。</li>
+<li>至于含数据库的项目, 我一开始是使用<code>create_app</code>,
+  但是在写学而的过程中我(和王怡凡)发现工厂函数并不是太好用,
+或者说工厂函数好用的地方不在于单个app的项目, 使用工厂函数可以随时随地构建flask
+app, 甚至可以在wsgi层构建flask app与其他python app交互,
+但是对于单app应用就没必要了。而且使用create_app会在创建app后注册蓝图,
+改变了模块的导入顺序, 容易造成循环导入(学而就是这种情况)。所以最后mana抛弃了create_app这种方法
+<hr/>
+我后来在<code>v2ex</code>上发了<a href="http://v2ex.com/t/248668#reply12">帖</a>, 最佳实践果然是讨论的焦点,
+后来陆续发现了几个<code>flask构建工具</code>(我就知道这种想法不是我一个人有...)</li>
+</ul>
+</li>
+<li>
+<p>https://github.com/mjhea0/flask-boilerplate</p>
+</li>
+<li>https://github.com/dpgaspar/Flask-AppBuilder</li>
+<li>https://github.com/sloria/cookiecutter-flask</li>
+<li>https://github.com/Leo-G/Flask-Scaffold</li>
+</ol>
+<p>但是以上都是直接git clone(好慢...),
+我则是把一个flask应用拆解模块化,写成了命令的形式,构建速度很快...</p>
+<h1>logger的使用</h1>
+<p>在写mana的时候，我还用到了<code>python loggeer</code></p>
+<pre><code># logging
+import logging
+from logging import StreamHandler, DEBUG
+# logger
+logger = logging.getLogger(__name__)
+logger.setLevel(DEBUG)
+logger.addHandler(StreamHandler())
+</code></pre>
+<p>使用logger可以很方便的控制输出等级[info], [warning], 再加上特殊字符
+<code>\033[32m%s\033[0m\n</code></p>
+<p><img alt="log" src="http://7xj431.com1.z0.glb.clouddn.com/log" /> 效果超赞!</p>
+<h1>最后</h1>
+<p>写了这么多, mana是第一个自己<code>自编自导自写</code>的项目,
+陆陆续续写了有一个学期,今夜做个-了解-总结。最后一点感慨, 技术就是力量,
+有了技术,你的想法就不会仅仅停留在嘴边, 可能几天后, 你的想法就会变成现实。</p>
+    </body>
+</html>

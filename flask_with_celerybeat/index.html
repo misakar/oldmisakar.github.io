@@ -1,0 +1,70 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>Flask配置celery定时任务</title>
+    </head>
+    <body>
+        <p>本篇博客主要通过<strong>代码</strong>总结一下, 如何在一个Flask项目中使用Celery队列定时执行任务.</p>
+<h2>配置Celery</h2>
+<p>配置项:<br>
+<a href="http://docs.celeryproject.org/en/master/getting-started/first-steps-with-celery.html#choosing-a-broker">Broker</a>(使用redis)<code>CELERY_BROKER_URL='redis://localhost:6379'</code><br/>
+<a href="http://docs.celeryproject.org/en/master/getting-started/first-steps-with-celery.html#keeping-results">Backend</a>(使用redis)<code>CELERY_RESULT_BACKEND='redis://localhost:6379'&lt;/code</p>
+<h2>编写make_celery工厂函数</h2>
+<p>```python
+    from celery import Celery</p>
+<pre><code>def make_celery(app):
+    celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+    class ContextTask(TaskBase):
+        abstruct = True
+        def __call__(self, *args, **keywords):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **keywords)
+    celery.Task = ContextTask
+    return celery
+</code></pre>
+<p>```</p>
+<p>这个工厂函数做了一点手脚(ContextTask), 这样就可以在celery task中使用flask对象(app context)</p>
+<h2>编写task</h2>
+<p>使用@celery.task装饰器编写celery任务</p>
+<p>```python
+    celery = make_celery(app)</p>
+<pre><code>@celery.task(name=printy)
+def printy():
+    print "hahahahaha"
+</code></pre>
+<p>```</p>
+<h2>定时celery任务</h2>
+<p>使用<code>CELERYBEAT_SCHEDULE</code>配置celery任务定时</p>
+<pre><code>from datetime import timedelta
+
+CELERYBEAT_SCHEDULE = {
+    'printy': {
+        'task': 'printy',
+        'schedule': timedelta(seconds=10)
+    },
+}
+</code></pre>
+<p>这里设置printy任务每隔10s触发一次.<br/>
+因为在<code>make_celery</code>函数中<code>celery.conf.update(app.config)</code>
+所以如果希望celery读取CELERYBEAT_SCHEDULE, 把CELERYBEAT_SCHEDULE放到flask app的配置中就行了.</p>
+<h2>启动celery</h2>
+<p>依次启动:举个例子<br/></p>
+<ol>
+<li>flask project: <code>python manage.py runserver</code></li>
+<li>redis(backend): <code>redis-server --port 6380</code></li>
+<li>redis(broker): <code>redis-server --port 6382</code></li>
+<li>celery(main process): <code>celery worker --app xxx.celery --loglevel=info</code></li>
+<li>celery(beat): <code>celery beat --app xxx.celery --loglevel=info</code></li>
+</ol>
+<p>当然，比较好的管理方法是使用supervisor,具体参见博文<a href="http://neo1218.github.io/blog/supervisor/">Python进程管理工具supervisor</a></p>
+<h2>更多关于Flask❤️ Celery</h2>
+<ul>
+<li><a href="http://blog.miguelgrinberg.com/post/using-celery-with-flask">using-celery-with-flask</a></li>
+<li><a href="http://www.it1me.com/it-answers?id=29670961&amp;s=Kiev&amp;ttl=Flask%2C+blueprints+uses+celery+task+and+got+cycle+import">Flask, blueprints uses celery task and got cycle import</a></li>
+</ul>
+    </body>
+</html>
