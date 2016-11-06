@@ -63,5 +63,27 @@ double             8
 <p>操作字符串时经常需要获取子串, 设想如果每个子串都是原字符串的部分拷贝(拷贝字符数组), 那么不仅需要额外的空间开销(子串的字符数组), 而且由于拷贝操作是线性时间(遍历), 当原字符串和子字符串规模很大时需要花费很长时间. 所以现代的编程语言(包括java)都采用别名(引用)的方式处理子字符串, 也就是子字符串的字符数组是共享原字符串的字符数组的, 而且根据子串头信息的偏移量和长度, 无论字符串规模多大, 都可以在常数时间内获取子串values[offset]~values[offset + count - 1]. 所以此时子串的内存空间占用只包含头信息(40字节)+字符数组的引用(8字节) = 48字节</p>
 <h2>总结</h2>
 <p>对所有对象内存占用的累计计算只能是估算, 因为一个程序在运行时是很复杂的, 比如多个字符串共享字符数组、对对象游离进行自动垃圾回收... 不过我们计算内存占用不是为了获得精确值, 而是为了比对, 和对时间的估算一样. 通过对空间和时间的估算, 我们就可以大致的对比出不同程序的好坏, 这也是算法分析的用处所在.</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
     </body>
 </html>
