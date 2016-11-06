@@ -1,0 +1,106 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>railgun技术总结</title>
+    </head>
+    <body>
+        <h1>railgun技术总结</h1>
+<p>学校运动会放假, 写了这个<a href="https://github.com/neo1218/railgun">静态站点生成器railgun</a></p>
+<h2>为什么要重复造轮子</h2>
+<p>我之前一直在用hexo, 很好用, 主题很丰富. 不过作为一个pythoner,
+我一直想自己搭一个博客, 于是在一个夜黑风高的晚上...我用python写了一个博客系统,
+部署到了服务器上, 然后我就后悔了, 数据库、部署太麻烦!
+还是直接静态页面推github好用! 但是又不想回hexo, 于是我脑洞了一下:
+<strong>为什么不自己写一个静态站点生成器呢?</strong> <br/>
+就有了railgun:)</p>
+<h2>railgun技术细节分析</h2>
+<p>一开始就很明确, railgun就是类似hexo的东西(其实就是一个东西😳 ),
+所以railgun需要自己的命令行工具, 需要静态化工具, 需要本地初始化后的站点.
+所以railgun的代码组织就很清楚了:</p>
+<pre><code>          - cli/: 命令行工具
+railgun/  - gen/: 静态化工具
+          - site/: 本地站点
+</code></pre>
+<p>接下来我就分别介绍这3个部分的技术实现. <br/></p>
+<h3>gen: 静态化</h3>
+<p>先介绍静态站点生成器最核心的部分-&gt;静态化! <br/>
+静态化的大体思路如下:</p>
+<pre><code>⚡️ 向特定的url发请求, 拿到返回的html响应内容, 将响应内容写入文件
+</code></pre>
+<p>所以这里就有2个坑:</p>
+<ol>
+<li>如何发请求并将响应写入文件</li>
+<li>如何静态化所有的url</li>
+</ol>
+<p>以及其他的一些坑:</p>
+<ol>
+<li>如何静态化static</li>
+<li>如何保证静态化的相对路径正确</li>
+</ol>
+<p>对于第1个坑, 我这里想到了写测试时用的<code>flask test_client</code>
+<img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-06%20%E4%B8%8A%E5%8D%8810.32.03.png" /> <br/>
+就像测试时一样, 发请求, 不过不是assert判断了, 而是直接将response.data写回文件,
+简单粗暴, 但是有效😄  <br/>
+第2个坑, 如何静态化所有的url,
+这个我想了好一段时间...最后发现了flask一个有意思特性: <a href="http://flask.pocoo.org/docs/0.11/patterns/urlprocessors/">url processors</a>
+<img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-06%20%E4%B8%8A%E5%8D%8810.37.35.png" /> <br/>
+简单来说, 我把gen函数注册到url_default_functions里面,
+这样在所有url_for被使用的时候我的gen就会被调用,
+拿到endpoint(端点)和value(参数)信息, 这样我就可以<code>url = url_for(endpoint, **values)</code>构造url, 发请求啦, 而且可以确保所有使用url_for构建的路由都会被我静态化!<br/>
+第3个坑如何静态化static, 呃, 问题在于static本来就是静态的,
+所以我也没必要请求static路由, 直接把static拷贝到build目录下就好啦! <br/>
+第4个坑涉及到静态化后的部署, 比如对于gh-pages这种url:
+<code>https://neo1218.github.io/project/</code>, 如果build相对的路径不正确,
+可能会误把<code>https://neo1218.github.io/</code>当作根路径... 解决的办法也很简单,
+我设置了一个<strong>GEN_BASE_URL</strong>配置手动指明根路径就行了.</p>
+<h3>site: 本地站点</h3>
+<p>使用<code>railgun init</code>会在本地初始化一个site的副本. 我这里没有使用git直接clone
+site, 因为git clone需要网, 而且慢. <br/>
+当你<code>pip install railgun-cli</code>的时候, railgun就会被安装到你的python
+site-packages目录下. 我设置了2个根路径:
+<img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-06%20%E4%B8%8A%E5%8D%8811.02.20.png" />
+<img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-06%20%E4%B8%8A%E5%8D%8811.02.35.png" /> <br/>
+site_path就会指向安装到site-packages目录下railgun里的site,
+dst就是你执行railgun init的地方. <br/>
+然后railgun创建本地site, os.walk遍历, shutil拷贝site-packages下的site到dst
+<img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-06%20%E4%B8%8A%E5%8D%8811.05.02.png" /> <br/>
+这样你本地就init了railgun-site! <br/>
+site就是一个普通的flask站点, 我利用了<a href="https://pythonhosted.org/Flask-FlatPages/">flask-flatpages</a>管理markdown文件.</p>
+<h3>cli: 命令行工具</h3>
+<p>这里用到了flask作者(我的男神之一,ps:我是男的)写的<a href="https://github.com/pallets/click">命令行工具click</a>,
+railgun命令大体的结构如下</p>
+<pre><code>@click.group()
+def cli():
+    pass  # 代码实现
+
+# railgun commands
+cli.add_command(init)
+cli.add_command(server)
+cli.add_command(build)
+cli.add_command(new)
+cli.add_command(upload)
+cli.add_command(upgrade)
+</code></pre>
+<p>每一个命令的具体实现可以利用click丰富的装饰器, 以init命令为例:</p>
+<pre><code>@click.command()
+@click.option('--dev', is_flag=True)
+@click.argument('site_name')
+def init(dev, site_name):
+    """
+    ⚡️ generate a railgun site
+    """
+    pass
+</code></pre>
+<p>而且click会把这里的注释信息自动生成帮助文档! <br/>
+更多的细节可以<a href="http://click.pocoo.org/5/">参看click文档</a> <br/>
+<hr/></p>
+<h2>only my railgun</h2>
+<p>railgun这个名字和ruby on rails没有关系啦😂 , 这个名字来源于一部动漫:
+《某科学的超电磁炮》(《To Aru Kagaku no Railgun》) <br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20017054/f80f9706-a2fc-11e6-9a56-72e7b73c5320.png" /> <br/>
+作为一个静态站点生成器, railgun最大的问题是没有主题... 我正在找前端的同学帮忙,
+写几个主题, 也欢迎关注railgun的同学写主题哦: <a href="https://neo1218.github.io/railgun/theme/">write a theme</a></p>
+    </body>
+</html>
