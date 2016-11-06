@@ -1,0 +1,86 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>指针(努力说清楚)</title>
+    </head>
+    <body>
+        <h1>努力说清楚--&gt;指针</h1>
+<h2>1. 内存地址</h2>
+<p>内存是用来放程序和数据的地方, 就像你家一样放你和你妈😄 ,那内存地址呢, 就是门牌号, 用来找到你家的位置.考虑到计算机基于二进制, 所以内存地址一般用16进制表示(可以很方便的基于二进制演算), 比如mbr在内存中的起始程序地址就是0x7c00(比较经典,拿来举例子,不懂就当我在装逼...下同).</p>
+<h2>2. 变量</h2>
+<p>变量是一个量, 是"量"就可以存东西, 也就拥有内存中的一块区域, 可以通过内存地址找到这个变量. 当然，变量吗, 这块内存中的东西是可以被程序改变的.</p>
+<h2>3. 指针</h2>
+<p>指针是一个变量, 就是这么简单. 但是相比于存放int, char, float类型的变量, 指针存放的是地址-&gt;就是那一串神奇的16进制数字. 也就是说<strong>通过指针变量中存放的地址可以找到相应的内存区域</strong>, 至于这块内存区域中放的是什么就要看初始化的时候给了什么.</p>
+<h2>4. &amp;: 取地址符</h2>
+<p>在C语言中, &amp;符号具有2个作用(作用多是因为操作符重载):</p>
+<ol>
+<li>取变量的地址</li>
+<li>按位与</li>
+</ol>
+<p>我们这里说第一个用法: <strong>在C语言中</strong>: &amp;表示取地址, 注意C++中"&amp;"表示引用, 引用的概念是另一块了, 这篇先跳过. <br/></p>
+<pre><code>int data = 10;
+// &amp;data 就可以拿到data变量的内存地址
+</code></pre>
+<h2>5. 初始化指针</h2>
+<pre><code>int data = 10;  // 声明并初始化一个变量data, 赋初值为10
+int* point = &amp;data  // 声明并初始化一个指针变量point, point存放data的内存地址&amp;data(形象的说就是point指针指向data所在的内存区域)
+// 这里的int*类型表明point是一个指针(*), 而且是指向一块存放int区域内存的指针(int)
+</code></pre>
+<p>如果指针声明后没有初始化, 就会变成野指针, 所谓野指针就是你不知道指针指向的是哪块内存区域(系统自动赋初值的数字会被解释为地址), 以后改变这个指针的时候就可能会破坏一些重要的内存区域.<br/>
+当然现在CPU都是保护模式, 用户程序是访问不到重要的内存地址的(比如内核)...(好吧, 我又在装逼了...)</p>
+<h2>6. *操作符</h2>
+<p>之前说了<code>&amp;data</code>表示取data变量的地址, 而<code>*&amp;data</code>就相当于data, 也就是说<code>*point</code>可以用来访问data变量.</p>
+<pre><code>int data2 = *point;  // 相当于 int data2 = data;
+</code></pre>
+<h2>7. 指针与数组</h2>
+<p>数组就是内存中一块连续的区域, 很自然的, 如果我们能用指针指向数组array的起始地址start, 就可以通过</p>
+<pre><code>array: 数组; start: 数组的起始内存地址; array_len: 数组的长度; type_len: 数组存放数据类型的大小
+
+for(int i = 0; i &lt; array_len; ++i) {
+    *(start + type_len*i)
+}
+</code></pre>
+<p>拿到数组中的元素. 事实是:</p>
+<pre><code>int a[5] = {1, 2, 3, 4, 5};
+// 这里的a就是数组的起始地址, 也就是数组中第一个元素的地址, 即:
+// a = &amp;a[0]
+int* point_a = a; // int* point_a = &amp;a[0]
+// 这里的point_a就是一个指向数组起始地址的指针.
+</code></pre>
+<p>所以可以用</p>
+<pre><code>for(int i = 0; i &lt; 5; ++i) {
+    *(point_a + 4*i)  // int占4个字节
+}
+</code></pre>
+<p>访问数组中的元素.</p>
+<h2>8. 指针与函数</h2>
+<p>函数也在内存中, 程序通过访问函数的起始地址调用函数, 之后会进行形参实参匹配, 局部变量入栈等操作. 同理, 如果我们把函数的起始地址放到一个指针变量中, 我们就可以使用指针调用这个函数!<br/>
+比如:</p>
+<pre><code>int (*point_function)(int, int)=NULLA; // 这里的point_function就是一个函数指针
+</code></pre>
+<p>可以实现一个函数给函数指针赋值</p>
+<pre><code>int function(int a, int b) {
+    int c = a+b;
+    printf("%d", &amp;c);
+}
+
+point_function = &amp;function
+</code></pre>
+<p>这个时候我们就可以使用point_function指针调用function函数了.</p>
+<pre><code>*point_function(1, 2); // 3
+</code></pre>
+<h2>9. 指针的作用</h2>
+<p>指针最大的特点就是可以直接控制内存区域, 高级语言或多或少的避免用户直接接触内存, 但是指针可以让程序员直接操作内存地址, 好处是灵活、方便、指哪打哪; 缺点...就是不安全, 比如我之前说的野指针.</p>
+<h2>10. 总结</h2>
+<p>关于指针, 当你被"*", "&amp;"迷惑的时候, 记住下面这些:</p>
+<ol>
+<li>指针是一个变量, 是一个存放内存地址的变量</li>
+<li>通过&amp;可以拿到一个变量的内存地址</li>
+<li>通过(*内存地址)可以拿到这块内存地址存放的变量</li>
+</ol>
+<p>这样, 再怎么搭配, 也不怕了:) 希望如此. <br/>
+<img alt="" src="https://avatars3.githubusercontent.com/u/10671733?v=3&amp;s=466" /></p>
+    </body>
+</html>
