@@ -14,8 +14,8 @@
 <h2>编写make_celery工厂函数</h2>
 <p>```python
     from celery import Celery</p>
-<pre><code>def make_celery(app):
-    celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
+<div class="codehilite"><pre><span></span>def make_celery(app):
+    celery = Celery(app.import_name, broker=app.config[&#39;CELERY_BROKER_URL&#39;])
     celery.conf.update(app.config)
     TaskBase = celery.Task
     class ContextTask(TaskBase):
@@ -25,29 +25,35 @@
                 return TaskBase.__call__(self, *args, **keywords)
     celery.Task = ContextTask
     return celery
-</code></pre>
+</pre></div>
+
+
 <p>```</p>
 <p>这个工厂函数做了一点手脚(ContextTask), 这样就可以在celery task中使用flask对象(app context)</p>
 <h2>编写task</h2>
 <p>使用@celery.task装饰器编写celery任务</p>
 <p>```python
     celery = make_celery(app)</p>
-<pre><code>@celery.task(name=printy)
+<div class="codehilite"><pre><span></span>@celery.task(name=printy)
 def printy():
-    print "hahahahaha"
-</code></pre>
+    print &quot;hahahahaha&quot;
+</pre></div>
+
+
 <p>```</p>
 <h2>定时celery任务</h2>
 <p>使用<code>CELERYBEAT_SCHEDULE</code>配置celery任务定时</p>
-<pre><code>from datetime import timedelta
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">timedelta</span>
 
-CELERYBEAT_SCHEDULE = {
-    'printy': {
-        'task': 'printy',
-        'schedule': timedelta(seconds=10)
-    },
-}
-</code></pre>
+<span class="n">CELERYBEAT_SCHEDULE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;printy&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;task&#39;</span><span class="p">:</span> <span class="s1">&#39;printy&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;schedule&#39;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <p>这里设置printy任务每隔10s触发一次.<br/>
 因为在<code>make_celery</code>函数中<code>celery.conf.update(app.config)</code>
 所以如果希望celery读取CELERYBEAT_SCHEDULE, 把CELERYBEAT_SCHEDULE放到flask app的配置中就行了.</p>

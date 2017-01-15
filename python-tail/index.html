@@ -6,133 +6,227 @@
         <title>Python尾递归优化</title>
     </head>
     <body>
-        <h2>一般递归与尾递归</h2>
+        <h1>Python尾递归优化</h1>
+<h2>一般递归与尾递归</h2>
 <h4>一般递归:</h4>
-<pre><code>def normal_recursion(n):
+<div class="codehilite"><pre><span></span>def normal_recursion(n):
     if n == 1:
         return 1
     else:
         return n + normal_recursion(n-1)
-</code></pre>
+</pre></div>
+
+
 <p>执行：</p>
-<pre><code>normal_recursion(5)
+<div class="codehilite"><pre><span></span>normal_recursion(5)
 5 + normal_recursion(4)
 5 + 4 + normal_recursion(3)
 5 + 4 + 3 + normal_recursion(2)
 5 + 4 + 3 + 2 + normal_recursion(1)
-5 + 4 + 3 + 2 + 1
+5 + 4 + 3 + 3
+5 + 4 + 6
+5 + 10
 15
-</code></pre>
-<p><strong>一般递归</strong>的效率是比较低的，因为在<code>return n + normal_recursion(n-1)</code>时需要
-调用栈保存中间变量n的值，递归进行的越深入，需要调用的栈就越多，效率也就越低。<br/></p>
+</pre></div>
+
+
+<p>可以看到, 一般递归, 每一级递归都需要调用函数, 会创建新的栈,
+随着递归深度的增加, 创建的栈越来越多, 造成爆栈💥 </p>
 <h4>尾递归</h4>
-<p>如果可以将中间变量作为参数直接传递给递归调用函数，那么可以大大提高递归效率，这就是尾递归
-的实现</p>
-<pre><code>def tail_recursion(n, total=0):
+<p><a href="https://zh.wikipedia.org/wiki/%E5%B0%BE%E8%B0%83%E7%94%A8">尾递归基于函数的尾调用</a>, 每一级调用直接返回函数的返回值更新调用栈,而不用创建新的调用栈, 类似迭代的实现, 时间和空间上均优化了一般递归!</p>
+<div class="codehilite"><pre><span></span>def tail_recursion(n, total=0):
     if n == 0:
         return total
     else:
         return tail_recursion(n-1, total+n)
-</code></pre>
+</pre></div>
+
+
 <p>执行：</p>
-<pre><code>tail_recursion(5)
+<div class="codehilite"><pre><span></span>tail_recursion(5)
 tail_recursion(4, 5)
 tail_recursion(3, 9)
 tail_recursion(2, 12)
 tail_recursion(1, 14)
 tail_recursion(0, 15)
 15
-</code></pre>
+</pre></div>
+
+
+<p>可以看到, 每一级递归的函数调用变成"线性"的形式. </p>
+<h2>深入理解尾递归</h2>
+<p>呃, 所以呢? 是不是感觉还不够过瘾... 谁说尾递归调用就不用创建新的栈呢?
+还是让我们去底层一探究竟吧<br/></p>
+<div class="codehilite"><pre><span></span>int tail_recursion(int n, int total) {
+    if (n == 0) {
+        return total;
+    }
+    else {
+        return tail_recursion(n-1, total+n);
+    }
+}
+
+int main(void) {
+    int total = 0, n = 4;
+    tail_recursion(n, total);
+    return 0;
+}
+</pre></div>
+
+
+<p><strong>反汇编</strong> <br/></p>
+<ul>
+<li><code>$ gcc -S tail_recursion.c -o normal_recursion.S</code></li>
+<li><code>$ gcc -S -O2 tail_recursion.c -o tail_recursion.S</code> gcc开启尾递归优化</li>
+</ul>
+<p>对比反汇编代码如下(AT&amp;T语法) <br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20724681/24cfaffe-b6aa-11e6-85f8-fee65848f533.png" /></p>
+<p>可以看到, 开启尾递归优化前, 使用call调用函数, 创建了新的调用栈(LBB0_3);
+而开启尾递归优化后, 就没有新的调用栈生成了, 而是直接pop
+bp指向的<code>_tail_recursion</code>函数的地址(pushq %rbp)然后返回,
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20724912/13fc5b22-b6ab-11e6-84db-80126d4601a6.png" />
+仍旧用的是同一个调用栈!</p>
 <h2>存在的问题</h2>
-<p>python 本身对尾递归的支持不太好，当递归深度超过1000时会报错</p>
-<pre><code>RuntimeError: maximum recursion depth exceeded
-</code></pre>
+<p>虽然尾递归优化很好, 但python 不支持尾递归，递归深度超过1000时会报错</p>
+<div class="codehilite"><pre><span></span><span class="n">RuntimeError</span><span class="o">:</span> <span class="n">maximum</span> <span class="n">recursion</span> <span class="n">depth</span> <span class="n">exceeded</span>
+</pre></div>
+
+
 <h2>一个牛人想出的解决办法：</h2>
 <h4>实现一个 tail_call_optimized 装饰器</h4>
-<pre><code>#!/usr/bin/env python2.4
-# This program shows off a python decorator(
-# which implements tail call optimization. It
-# does this by throwing an exception if it is
-# it's own grandparent, and catching such
-# exceptions to recall the stack.
-# 抛出异常，捕获异常，重新调用栈...牛
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="ch">#!/usr/bin/env python2.4</span>
+<span class="c1"># This program shows off a python decorator(</span>
+<span class="c1"># which implements tail call optimization. It</span>
+<span class="c1"># does this by throwing an exception if it is</span>
+<span class="c1"># it&#39;s own grandparent, and catching such</span>
+<span class="c1"># exceptions to recall the stack.</span>
 
-import sys
+<span class="kn">import</span> <span class="nn">sys</span>
 
-class TailRecurseException:
-    """尾递归异常类"""
-    def __init__(self, args, kwargs):
-        self.args = args
-        self.kwargs = kwargs
+<span class="k">class</span> <span class="nc">TailRecurseException</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
 
-def tail_call_optimized(g):
-    """
-    This function decorates a function with tail call
-    optimization. It does this by throwing an exception
-    if it is it's own grandparent, and catching such
-    exceptions to fake the tail call optimization.
+<span class="k">def</span> <span class="nf">tail_call_optimized</span><span class="p">(</span><span class="n">g</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function decorates a function with tail call</span>
+<span class="sd">    optimization. It does this by throwing an exception</span>
+<span class="sd">    if it is it&#39;s own grandparent, and catching such</span>
+<span class="sd">    exceptions to fake the tail call optimization.</span>
 
-    This function fails if the decorated
-    function recurses in a non-tail context.
-    """
-    def func(*args, **kwargs):
-        f = sys._getframe()
-        if f.f_back and f.f_back.f_back \
-            and f.f_back.f_back.f_code == f.f_code:
-            # 抛出异常
-            raise TailRecurseException(args, kwargs)
-        else:
-            while 1:
-                try:
-                    return g(*args, **kwargs)
-                except TailRecurseException, e:
-                    # 捕获异常，重新调用栈
-                    args = e.args
-                    kwargs = e.kwargs
-    func.__doc__ = g.__doc__
-    return func
+<span class="sd">    This function fails if the decorated</span>
+<span class="sd">    function recurses in a non-tail context.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span>
+        <span class="c1"># 为什么是grandparent, 函数默认的第一层递归是父调用,</span>
+        <span class="c1"># 对于尾递归, 不希望产生新的函数调用(即:祖父调用),</span>
+        <span class="c1"># 所以这里抛出异常, 拿到参数, 退出被修饰函数的递归调用栈!(后面有动图分析)</span>
+        <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span> \
+            <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_code</span> <span class="o">==</span> <span class="n">f</span><span class="o">.</span><span class="n">f_code</span><span class="p">:</span>
+            <span class="c1"># 抛出异常</span>
+            <span class="k">raise</span> <span class="n">TailRecurseException</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">g</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">TailRecurseException</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="c1"># 捕获异常, 拿到参数, 退出被修饰函数的递归调用栈</span>
+                    <span class="n">args</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span>
+                    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">kwargs</span>
+    <span class="n">func</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">__doc__</span>
+    <span class="k">return</span> <span class="n">func</span>
 
-@tail_call_optimized
-def factorial(n, acc=1):
-    "calculate a factorial"
-    if n == 0:
-        return acc
-    return factorial(n-1, n*acc)
+<span class="nd">@tail_call_optimized</span>
+<span class="k">def</span> <span class="nf">factorial</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">acc</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="s2">&quot;calculate a factorial&quot;</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">acc</span>
+    <span class="k">return</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">*</span><span class="n">acc</span><span class="p">)</span>
 
-print factorial(10000)
-# prints a big, big number,
-# but doesn't hit the recursion limit.
+<span class="k">print</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">10000</span><span class="p">)</span>
+</pre></div>
+</td></tr></table>
 
-@tail_call_optimized
-def fib(i, current = 0, next = 1):
-    if i == 0:
-        return current
-    else:
-        return fib(i - 1, next, current + next)
-
-print fib(10000)
-# also prints a big number,
-# but doesn't hit the recursion limit.
-</code></pre>
-<p>作者的基本思想就是当尾递归达到最大深度时自己抛出一个异常(TailRecurseException), 然后
-捕获这个异常，然后重新调用栈，而不是让异常终止尾递归的运行。<br/></p>
+<p>为了更清晰的展示开启尾递归优化前、后调用栈的变化和tail_call_optimized装饰器抛异常退出递归调用栈的作用, 我这里利用<a href="https://github.com/inducer/pudb">pudb调试工具</a>做了动图 <br/></p>
+<p>开启尾递归优化前的调用栈 <br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20725973/b4e5d060-b6ae-11e6-9116-265cdd871b36.gif" /> <br/>
+开启尾递归优化后(tail_call_optimized装饰器)的调用栈 <br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20726110/1cfc8568-b6af-11e6-9817-1257b4c482f1.gif" /> <br/></p>
+<p>通过pudb右边栏的stack, 可以很清晰的看到调用栈的变化. <br/>
+因为尾递归没有调用栈的嵌套, 所以Python也不会报<code>RuntimeError: maximum recursion depth exceeded</code>错误了! <br/></p>
 <p>这里解释一下 sys._getframe() 函数:<br/></p>
-<pre><code>sys.getframe([depth]):
-Return a frame object from the call stack. If optional integer depth is given, return the frame object that many calls below the top of the stack. If that is deeper than the call stack, ValueError is raised. The default for depth is zero, returning the frame at the top of the call stack.
+<div class="codehilite"><pre><span></span><span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">([</span><span class="n">depth</span><span class="p">]):</span>
+<span class="n">Return</span> <span class="n">a</span> <span class="n">frame</span> <span class="nb">object</span> <span class="kn">from</span> <span class="nn">the</span> <span class="nn">call</span> <span class="nn">stack.</span>
+<span class="n">If</span> <span class="n">optional</span> <span class="n">integer</span> <span class="n">depth</span> <span class="ow">is</span> <span class="n">given</span><span class="p">,</span> <span class="k">return</span> <span class="n">the</span> <span class="n">frame</span> <span class="nb">object</span> <span class="n">that</span> <span class="n">many</span> <span class="n">calls</span> <span class="n">below</span> <span class="n">the</span> <span class="n">top</span> <span class="n">of</span> <span class="n">the</span> <span class="n">stack</span><span class="o">.</span>
+<span class="n">If</span> <span class="n">that</span> <span class="ow">is</span> <span class="n">deeper</span> <span class="n">than</span> <span class="n">the</span> <span class="n">call</span> <span class="n">stack</span><span class="p">,</span> <span class="n">ValueEfror</span> <span class="ow">is</span> <span class="n">raised</span><span class="o">.</span> <span class="n">The</span> <span class="n">default</span> <span class="k">for</span> <span class="n">depth</span> <span class="ow">is</span> <span class="n">zero</span><span class="p">,</span>
+<span class="n">returning</span> <span class="n">the</span> <span class="n">frame</span> <span class="n">at</span> <span class="n">the</span> <span class="n">top</span> <span class="n">of</span> <span class="n">the</span> <span class="n">call</span> <span class="n">stack</span><span class="o">.</span>
 
-即返回depth深度调用的栈帧对象.
+<span class="err">即返回</span><span class="n">depth</span><span class="err">深度调用的栈帧对象</span><span class="o">.</span>
 
-import sys
+<span class="kn">import</span> <span class="nn">sys</span>
 
-def get_cur_info():
-    print sys._getframe().f_code.co_filename  # 当前文件名
-    print sys._getframe().f_code.co_name  # 当前函数名
-    print sys._getframe().f_lineno # 当前行号
-    print sys._getframe().f_back # 调用者的帧
-</code></pre>
-<h2>参考</h2>
-<p>http://www.cnblogs.com/hello--the-world/archive/2012/07/19/2599003.html<br/>
-http://www.chinaz.com/program/2013/0917/318157_2.shtml</p>
+<span class="k">def</span> <span class="nf">get_cur_info</span><span class="p">():</span>
+    <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_filename</span>  <span class="c1"># 当前文件名</span>
+    <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_name</span>  <span class="c1"># 当前函数名</span>
+    <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_lineno</span> <span class="c1"># 当前行号</span>
+    <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span> <span class="c1"># 调用者的帧</span>
+</pre></div>
+
+
+<p>更多关于<code>sys._getframe</code>请看<a href="http://feihonghsu.com/secrets/framehack/index.html#crazy-monkey-patching-lxml">Frame Hacks</a></p>
         <div id="disqus_thread"></div>
         <script>
         /**

@@ -19,16 +19,20 @@
 <p>一开始就很明确, railgun就是类似hexo的东西(其实就是一个东西😳 ),
 所以railgun需要自己的命令行工具, 需要静态化工具, 需要本地初始化后的站点.
 所以railgun的代码组织就很清楚了:</p>
-<pre><code>          - cli/: 命令行工具
+<div class="codehilite"><pre><span></span>          - cli/: 命令行工具
 railgun/  - gen/: 静态化工具
           - site/: 本地站点
-</code></pre>
+</pre></div>
+
+
 <p>接下来我就分别介绍这3个部分的技术实现. <br/></p>
 <h3>gen: 静态化</h3>
 <p>先介绍静态站点生成器最核心的部分-&gt;静态化! <br/>
 静态化的大体思路如下:</p>
-<pre><code>⚡️ 向特定的url发请求, 拿到返回的html响应内容, 将响应内容写入文件
-</code></pre>
+<div class="codehilite"><pre><span></span>⚡️ 向特定的url发请求, 拿到返回的html响应内容, 将响应内容写入文件
+</pre></div>
+
+
 <p>所以这里就有2个坑:</p>
 <ol>
 <li>如何发请求并将响应写入文件</li>
@@ -71,7 +75,7 @@ site就是一个普通的flask站点, 我利用了<a href="https://pythonhosted.
 <h3>cli: 命令行工具</h3>
 <p>这里用到了flask作者(我的男神之一,ps:我是男的)写的<a href="https://github.com/pallets/click">命令行工具click</a>,
 railgun命令大体的结构如下</p>
-<pre><code>@click.group()
+<div class="codehilite"><pre><span></span>@click.group()
 def cli():
     pass  # 代码实现
 
@@ -82,17 +86,21 @@ cli.add_command(build)
 cli.add_command(new)
 cli.add_command(upload)
 cli.add_command(upgrade)
-</code></pre>
+</pre></div>
+
+
 <p>每一个命令的具体实现可以利用click丰富的装饰器, 以init命令为例:</p>
-<pre><code>@click.command()
-@click.option('--dev', is_flag=True)
-@click.argument('site_name')
+<div class="codehilite"><pre><span></span>@click.command()
+@click.option(&#39;--dev&#39;, is_flag=True)
+@click.argument(&#39;site_name&#39;)
 def init(dev, site_name):
-    """
+    &quot;&quot;&quot;
     ⚡️ generate a railgun site
-    """
+    &quot;&quot;&quot;
     pass
-</code></pre>
+</pre></div>
+
+
 <p>而且click会把这里的注释信息自动生成帮助文档! <br/>
 更多的细节可以<a href="http://click.pocoo.org/5/">参看click文档</a> <br/>
 <hr/></p>

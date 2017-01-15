@@ -131,9 +131,11 @@
 <p>2.灵活 </br>
 这是我最看重容器的一点. 这次华师匣子后端的一次"事故", 直接加深了我使用docker的决心, 课表模拟登录跑在一台服务器上, 结果那台服务器网络不稳定, 导致课表服务无法使用, 最简单的方法自然是再加一台服务器做负载, 然而我的数据库是跑在服务器本地的, 课表服务器是直接写在主代码里的需要大量环境依赖和启动几个数据库, 于是我在一个小时内手动剥离课表服务、部署到另外一台服务器、将mongodb跑在公有端口、进行数据迁移, 然后重启应用....是的、全部是在线上....(还好数据没丢). </br>
 如果使用docker就比较方便了, 将课表服务打包到docker中, 需要负载怎么办？</p>
-<pre><code>$ git pull &amp;&amp; docker-compose build &amp;&amp; docker-compose up -d
+<div class="codehilite"><pre><span></span>$ git pull <span class="o">&amp;&amp;</span> docker-compose build <span class="o">&amp;&amp;</span> docker-compose up -d
 $ 配置重启nginx
-</code></pre>
+</pre></div>
+
+
 <p>就搞定了. <br/>
 后端应用非常需要横向扩展能力, 因为你会在线上遇到各种问题, 相信我, 线上环境和测试环境完全是两个东西😢 . 应用程序跑在docker里, 没有了环境依赖的问题, 可以像堆积木一样, 扩展自己的项目.</p>
 <h3>web后端应用的瓶颈到底在哪里?</h3>

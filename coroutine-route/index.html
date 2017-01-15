@@ -16,18 +16,20 @@
 <p>Python中可以使用generator的yield关键字实现协程, 也可以使用greenlet库以及基于greenlet实现的async库gevent创建协程.</p>
 <h3>1. yield表达式</h3>
 <p>yield表达式可以创建generator生成器, 举个例子:</p>
-<pre><code>def gen_fn():
-    print 'start'
+<div class="codehilite"><pre><span></span>def gen_fn():
+    print &#39;start&#39;
     yield 1
-    print 'middle'
+    print &#39;middle&#39;
     yield 2
-    print 'end'
-</code></pre>
+    print &#39;end&#39;
+</pre></div>
+
+
 <p>这个gen_fn就是一个生成器函数:</p>
-<pre><code>&gt;&gt; type(gen_fn)  # gen_fn也是一个普通的Python函数
-&lt;class 'function'&gt;
+<div class="codehilite"><pre><span></span>&gt;&gt; type(gen_fn)  # gen_fn也是一个普通的Python函数
+&lt;class &#39;function&#39;&gt;
 &gt;&gt; gen = gen_fn()  # 但是gen_fn执行后并没有立即输出结果,而是一个生成器
-&lt;class 'generator'&gt;
+&lt;class &#39;generator&#39;&gt;
 &gt;&gt; gen.gi_frame.f_lasti  # 此时查看函数堆栈, gen_fn其实并没有被执行
 -1
 &gt;&gt; rv = next(gen)  # 手动调用next, gen_fn才会执行
@@ -44,54 +46,64 @@ end
 StopIteration  # 生成器会引发StopIteration错误结束运行
 &gt;&gt; gen.gi_frame  # 执行结束、堆栈清空
 None
-</code></pre>
+</pre></div>
+
+
 <p>可见，生成器的一个特性就是"惰性求值", yield可以"记忆"生成器函数执行的堆栈状态并用next进行手动切换, 是不是和协程很像呢? <br/>
 使用生成器可以创建"协程", 让我们再复习一下协程的特性: 单线程、独立的堆栈空间、同一时刻只有一个协程运行.</p>
-<pre><code>&gt;&gt; gen1 = gen_fn()
+<div class="codehilite"><pre><span></span>&gt;&gt; gen1 = gen_fn()
 &gt;&gt; gen2 = gen_fn()
 &gt;&gt; gen1.gi_code is gen2.gi_code
 True  # gen1和gen2具有相同的gi_code,这意味着gen1和gen2指向同一个对象,跑在同一个线程空间里
 &gt;&gt; gen1.gi_frame is gen2.gi_frame
 False  # gen1和gen2拥有完全独立堆栈空间!gen1和gen2拥有自己独立的局部变量, gen1运行至middle, gen2可以运行end!
-</code></pre>
+</pre></div>
+
+
 <p>我想大家可能明白了, 这里的gen1和gen2就是两个可爱的协程! <br></p>
 <h3>2. greenlet</h3>
 <p>greenlet提供了greenlet类来创建协程</p>
-<pre><code>from greenlet import greenlet
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">greenlet</span> <span class="kn">import</span> <span class="n">greenlet</span>
 
-def test1():
-    print 12
-    gr2.switch()
-    print 34
+<span class="k">def</span> <span class="nf">test1</span><span class="p">():</span>
+    <span class="k">print</span> <span class="mi">12</span>
+    <span class="n">gr2</span><span class="o">.</span><span class="n">switch</span><span class="p">()</span>
+    <span class="k">print</span> <span class="mi">34</span>
 
-def test2():
-    print 56
-    gr1.switch()
-    print 78
+<span class="k">def</span> <span class="nf">test2</span><span class="p">():</span>
+    <span class="k">print</span> <span class="mi">56</span>
+    <span class="n">gr1</span><span class="o">.</span><span class="n">switch</span><span class="p">()</span>
+    <span class="k">print</span> <span class="mi">78</span>
 
-gr1 = greenlet(test1)
-gr2 = greenlet(test2)
-gr1.switch()
-</code></pre>
+<span class="n">gr1</span> <span class="o">=</span> <span class="n">greenlet</span><span class="p">(</span><span class="n">test1</span><span class="p">)</span>
+<span class="n">gr2</span> <span class="o">=</span> <span class="n">greenlet</span><span class="p">(</span><span class="n">test2</span><span class="p">)</span>
+<span class="n">gr1</span><span class="o">.</span><span class="n">switch</span><span class="p">()</span>
+</pre></div>
+
+
 <p>这里的gr1和gr2就是两个协程, 通过switch方法在这两个协程的堆栈间切换 <br/>
 运行结果</p>
-<pre><code>12
+<div class="codehilite"><pre><span></span>12
 56
 34
-</code></pre>
+</pre></div>
+
+
 <h3>3. gevent</h3>
 <p>gevent是基于greenlet的一个异步库, gevent对greenlet初始化进行了一些封装, 可用于创建greenlet协程</p>
-<pre><code>import gevent
-from gevent import Greenlet
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">gevent</span>
+<span class="kn">from</span> <span class="nn">gevent</span> <span class="kn">import</span> <span class="n">Greenlet</span>
 
-def foo(msg, n):
-    gevent.sleep(n)
-    print(msg)
+<span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="n">gevent</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-gr1 = Greenlet.spawn(foo, "hello", 2)
-gr1.start()
-gr1.join()
-</code></pre>
+<span class="n">gr1</span> <span class="o">=</span> <span class="n">Greenlet</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="s2">&quot;hello&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">gr1</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="n">gr1</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+</pre></div>
+
+
 <p>这里gevent调用sleep的时候, 当前协程"中断", 执行权跳到hub协程(gevent中负责调度的协程, main loop就跑在hub里面), 由hub将执行权交给别的协程执行, 实现"并行". 更多关于gevent的知识见文末《一起阅读gevent源码》.</p>
 <h2>传统的线程模型实现</h2>
 <p>这里以ThreadLocal模型在flask框架中的应用为例, flask中每一个请求环境对应一个request context线程, 由_request_ctx_stack栈调度:
@@ -108,16 +120,18 @@ gr1.join()
 <h2>将web框架的核心调度设计为协程</h2>
 <p>于是我开始了替换代码的设计和编写, 考虑请求环境的独立性和唯一性, 我决定设计CorotineLocal模型(自己发明的词...), 核心思想: 就是将wsgi协议的application实现封装到协程环境(单线程中), 并使用一个<code>_request_ctx_hub</code>协程进行请求协程的切换, <code>_request_ctx_hub</code>是一个gevent local创建的greenlet协程从而确保环境的独立性(local), 并使用werkzeug的LocalProxy进行局部环境的全局代理: 上代码<br/>
 wsgi_app:</p>
-<pre><code>def wsgi_app(self, environ, start_response):
+<div class="codehilite"><pre><span></span>def wsgi_app(self, environ, start_response):
     # actual wsgi application.
     with requestcontext(self, environ):
         # _request_ctx_hub context
         rv = self.dispatch_request()
         resp = self.make_response(rv)
         return resp(environ, start_response)
-</code></pre>
+</pre></div>
+
+
 <p>requestcontext:</p>
-<pre><code>@contextmanager
+<div class="codehilite"><pre><span></span>@contextmanager
 def requestcontext(app, environ):
     _request_ctx_hub.app = app
     _request_ctx_hub.url_adapter = app.url_map.bind_to_environ(environ)
@@ -126,13 +140,19 @@ def requestcontext(app, environ):
         yield  _request_ctx_hub  # coroutine stack switch
     finally:
         _request_ctx_hub.request = None  # clean up
-</code></pre>
+</pre></div>
+
+
 <p>_request_ctx_hub:   </p>
-<pre><code>_request_ctx_hub = local()
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="n">_request_ctx_hub</span><span class="o"> =</span> <span class="kd">local</span><span class="p">()</span>
+</pre></div>
+
+
 <p>localproxy:</p>
-<pre><code>request = LocalProxy(lambda: _request_ctx_hub.request)
-</code></pre>
+<div class="codehilite"><pre><span></span>request = LocalProxy(lambda: _request_ctx_hub.request)
+</pre></div>
+
+
 <h2>用测试实例说话</h2>
 <p>我最近在开发一个restful api framework: <a href="https://github.com/neo1218/pirate">pirate</a>, 使用的就是CoroutineLocal模型, 我和ThreadLocal的flask做了一个对比测试:<br/>
 为了尽可能保证测试的一致性, 我使用单文件的flask框架<a href="https://github.com/neo1218/pirate/blob/master/examples/compares/compare_with_flask/flask.py">flask.py</a>,

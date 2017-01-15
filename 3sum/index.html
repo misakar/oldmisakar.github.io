@@ -11,8 +11,10 @@
 <hr></p>
 <h2>人类的理性思维: 自然科学思想应用于计算机</h2>
 <p>我生活在大自然中, 早已麻木习惯了. 但总有那么一批人, 我曾经崇敬的人们, 不遗余力的探索这个世界的规律: 物理、化学、生物、生命学(生命动力学原理, 听起来很玄乎, 但是我的一个老师就研究这个, 而且基于统计学得出了一些成果, 很辛苦, 已经过世了, 近5年应该不会被认可, 但是我有点相信这个理论: 输入、扰动、输出决定人的关键时刻, 那句"月亮代表我的心"其实是"月亮影响我的心"...).这一批批人类在探索自然的过程中总结了一套标准流程: <strong>科学方法</strong></p>
-<pre><code>提出问题-&gt;进行实验-&gt;观察结果-&gt;得出结论-&gt;比对猜想
-</code></pre>
+<div class="codehilite"><pre><span></span>提出问题-&gt;进行实验-&gt;观察结果-&gt;得出结论-&gt;比对猜想
+</pre></div>
+
+
 <p>这里的实验有一个关键特性: 可重现, 只要基础的自然规律不变, 那么这个实验在任何时间、任何人做, 结论都应当是一致的. <br/>
 科学方法可以应用到算法的研究中, 基于数学分析和实验可以得出关于算法的一些结论.</p>
 <h3>这不是偶然</h3>
@@ -20,7 +22,7 @@
 <h2>提出问题: 3-sum problem</h2>
 <p>3-sum问题的大意是: <code>如何统计输入流(ex:一个文件)中所有和为0的三整数元组的数量?(假设整数不会溢出)</code><br/>
 最简单的方法自然是依次遍历, 相加比证:</p>
-<pre><code>public class ThreeSum
+<div class="codehilite"><pre><span></span>public class ThreeSum
 {
     public static int count(int[] a)
     {
@@ -42,10 +44,12 @@
         StdOut.println(count(a))
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>如何测量? 实现计时器</h2>
 <p>现在我们得到了3-sum问题的实现代码, 那么这个算法面对大量数据时需要运行多少时间? 有没有更快的算法? 因此, 我们需要利用Java的currentTimeMillis方法实现计时器, 该方法可以返回以毫秒为单位的时间.</p>
-<pre><code>public class TimeWatch
+<div class="codehilite"><pre><span></span>public class TimeWatch
 {
     private final long start; // 起始时间, 将start声明为final, 在此对象中不可多次初始化
     public TimeWatch()
@@ -56,11 +60,13 @@
         return (now - start) / 1000.0;
     }
 }
-</code></pre>
+</pre></div>
+
+
 <p>这个计时器在创建时通过构造函数将起始时间保存在start中, 调用elapsedTime方法时返回程序运行的差值时间. 不过创建对象从调用构造函数到完成创建还是有点时间的.</p>
 <h2>实验数据构造: 随机数生成器</h2>
 <p>有了代码, 有了计时器, 就可以进行实验和测量了. 不过我们希望实验验证处理的是大量数据1000、10000、100000级别的数据, 而且希望可以从问题规模的增长中看出程序运行时间的变化, 方便作图得出直观结论. 所以我们还要实现一个输入流生成器, 输入流的规模会随着程序的运行不断加倍, 达到动态增长的效果.</p>
-<pre><code>public class DoublingTest
+<div class="codehilite"><pre><span></span>public class DoublingTest
 {
     public static double timeTrial(int N)
     {   // 生成特定问题规模N的输入流数组a
@@ -79,11 +85,13 @@
         for(int N = 250; true; N += N)
         {
             double time = timeTrial(N);
-            StdOut.printf("%7d %5.1f\n", N, time);
+            StdOut.printf(&quot;%7d %5.1f\n&quot;, N, time);
         }
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>实验结果预估: 直观的函数图像</h2>
 <p>有了自变量(输入流规模)和因变量(程序运行时间), 我们就可以作出图像, 图像是直观的, 直观于得出结论和相互比较.</p>
 <h2>抽象~数学模型~增长数量级~近似运行时间</h2>
@@ -112,7 +120,7 @@
 <h2>算法的魔力</h2>
 <p>知道了怎么快, 那么如何更快? ThreeSum问题的关键在于3个整数a[i], a[j], a[k]的和为0, 如果将每次遍历的操作改为归并排序+二分搜素, 即搜索是否存在-(a[i] + a[j])存在于a中, 且搜索项的下标大于j(避免重复计数), 就可以将增长数量级由N^3降为NlogN(归并排序:NlogN, 二分搜索logN).<br/>
 BinarySearch:</p>
-<pre><code>public class BinarySearch
+<div class="codehilite"><pre><span></span>public class BinarySearch
 {
     public static int rank(int key, int[] a)
     {
@@ -128,23 +136,27 @@ BinarySearch:</p>
         return -1;
     }
 }
-</code></pre>
+</pre></div>
+
+
 <p>ThreeSumFast</p>
-<pre><code>import java.util.Arrays;
-public class ThreeSumFast
-{
-    public static int count(int[] a)
-    {
-        Arrays.sort(a);  // 归并排序
-        int N = a.length;
-        int cnt = 0;
-        for(int i = 0; i &lt; N; i++)
-            for(int j = i+1; j &lt; N; j++)
-                if (BinarySearch.rank(-a[i]-a[j], a) &gt; j)
-                    { cnt++; }
-    }
-}
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">java.util.Arrays</span><span class="p">;</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ThreeSumFast</span>
+<span class="p">{</span>
+    <span class="n">public</span> <span class="n">static</span> <span class="nb">int</span> <span class="n">count</span><span class="p">(</span><span class="nb">int</span><span class="p">[]</span> <span class="n">a</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">Arrays</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>  <span class="o">//</span> <span class="err">归并排序</span>
+        <span class="nb">int</span> <span class="n">N</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">length</span><span class="p">;</span>
+        <span class="nb">int</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">for</span><span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+            <span class="k">for</span><span class="p">(</span><span class="nb">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">N</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">BinarySearch</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">a</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">a</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">j</span><span class="p">)</span>
+                    <span class="p">{</span> <span class="n">cnt</span><span class="o">++</span><span class="p">;</span> <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3>呵呵, 算法出奇迹</h3>
 <p>要知道, 随着输入流规模N的增长, NlogN的增长速率可是远低于N^3! 所以说: 算法出奇迹...</p>
 <h2>附表(参考《算法》第4版)</h2>

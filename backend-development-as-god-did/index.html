@@ -1,0 +1,90 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>像&#34;上帝那样&#34;开发后端应用</title>
+    </head>
+    <body>
+        <blockquote>
+<p>1 起初神创造天地。
+2 地是空虚混沌。渊面黑暗。神的灵运行在水面上。 
+3 神说，要有光，就有了光。 
+-- 《旧约》创世纪</p>
+</blockquote>
+<p>"要有光就有了光", 好潇洒! 多么希望我们后端开发者在开发的时候也能像上帝一样说一句: 我要mysql数据库, 我要redis...它们就安装好了跑在端口上等你...<br/>
+好吧, 其实我已经掌握了"上帝的魔力", 实现这种魔力的圣器就是docker! <br/></p>
+<h2>flask与docker-compose的魔法</h2>
+<p>有了docker-compose, 你只需要说明自己需要什么, 然后docker-compose build, 这些东西就会被安装到容器里运行. <br/>
+所以, 开发的时候定义一份 docker-compse.dev.yml 像上帝一样说自己想要什么.</p>
+<div class="codehilite"><pre><span></span>#-------------------- celery --------------------------
+celery:
+    build: .
+    env_file:
+        - restccnu.env
+    command: celery worker -A restccnu.workers.workers.celery --loglevel=INFO
+    links:
+        - redis1
+        - redis2
+        - redis3
+
+#------------------- celery beats----------------------
+celery_beats:
+    build: .
+    env_file:
+        - restccnu.env
+    command: celery -A restccnu.workers.workers.celery beat --loglevel=INFO
+    links:
+        - redis1
+        - redis2
+        - redis3
+
+#------------------- redis servers---------------------
+redis1:
+    image: redis
+    command: redis-server --port 6384  # 静态资源存储
+    ports:
+        - &quot;7384:6384&quot;
+redis2:
+    image: redis
+    command: redis-server --port 6381  # 通知公告缓存
+    ports:
+        - &quot;7381:6381&quot;
+redis3:
+    image: redis
+    command: redis-server --port 6383 # celery result backend
+    ports:
+        - &quot;7383:6383&quot;
+</pre></div>
+
+
+<p>flask应用跑在本地, 应用内部链接到容器运行的公有端口就行了.<br/>
+这样仅仅需要安装flask扩展, 既可以利用flask hot reload和debug特性, 不用频繁rebuild容器, 又可以免去了繁琐的环境重复安装! <br/>
+不过不太好的一点, 如果你修改了环境相关的代码, 需要rebuild环境容器. <br/>
+测试、部署的时候, 把开发时跑在本地的flask应用打包到容器里, 就OK啦. <br/>
+自从有了docker/docker-compose, 匣子每天都要部署迭代好几次, 因为好用到开心啊, 写生产代码都有动力了! <br/>
+好吧, 这是一篇docker安利文, bye.</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

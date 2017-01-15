@@ -1,0 +1,599 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>操作系统开发总结(持久更新)</title>
+    </head>
+    <body>
+        <p>最近在写一个操作系统<a href="https://github.com/UiharuOS/uiharu">uiharu</a>, 用到了很多x86 intel汇编的东西, 在这里对一些技巧做一个收录, 方便以后遗忘的时候查看.
+<hr/></p>
+<h2>索引</h2>
+<ul>
+<li><strong>字符搬运三剑客:movs, rep, cld</strong></li>
+<li><strong>各种段寄存器的作用</strong></li>
+<li><strong>BIOS中断</strong><ul>
+<li>bios 0x10中断<ul>
+<li>0x06子功能: 上卷窗口</li>
+<li>0x13子功能: 显示字符串(vga文本模式)</li>
+</ul>
+</li>
+<li>bios 0x15中断<ul>
+<li>0xe820子功能: 获取系统内存布局</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>与外设打交道</strong><ul>
+<li>控制显卡</li>
+<li>控制硬盘<ul>
+<li>用汇编读写硬盘</li>
+</ul>
+</li>
+<li>恶心的8259A中断代理芯片</li>
+</ul>
+</li>
+<li><strong>描述符表</strong><ul>
+<li>全局描述符表 GDT</li>
+<li>中断描述符表 IDT</li>
+</ul>
+</li>
+</ul>
+<hr/>
+
+<h2>字符搬运三剑客! movs[bwd], rep, cl[st]d</h2>
+<p><img alt="三剑客" src="http://cs.vmovier.com/Uploads/cover/2015-02-04/54d1edaf8b8ad_cut.jpeg" /> <br/></p>
+<p><strong>movs(mov string)[bwd] + rep + cl[st]d</strong>3个指令配合用于批量从源地址搬运数据到目的地址</p>
+<ul>
+<li>byte:  1字节  \</li>
+<li>word:  2字节 --&gt; 数据从哪来, 搬到哪里去?</li>
+<li>dword: 4字节  /</li>
+</ul>
+<p>将DS:[E]SI指向的地址处相应的字节搬到DS:[E]DI指向的地址处. <br/>
+大量的数据, 则通过rep控制计数器ecx进行连续拷贝 <br/>
+每次搬运都需要更新源地址寄存器, 所以需要cld和std指令 <br/>
+cld: clean direction: 设置eflags寄存器中的方向标志位[内存中数据扩展的方向]DF为0, 每次rep重复搬运时si,di就自动(CPU做, 不用代码控制)加上相应的搬运数据字节大小(向上扩展)
+std: set direction: 设置eflags寄存器中的方向标志位为1 每次rep重复搬运时si,di就自动减去相应的搬运数据字节大小(向下扩展)
+CPU自动增加si, di中会用到的寄存器(不是2者都增加), 只有movs才会同时增加esi和edi <br/>
+ins[bwd]: 从端口读入数据到内存-&gt;edi的增加(cld)或减少(std) <br/>
+outs[bwd]: 从内存中读数据到端口-&gt;esi的增加(cld)或减少(std) <br/></p>
+<h2>各种段寄存器的作用</h2>
+<p><img alt="" src="https://camo.githubusercontent.com/0dc1da4de3ab0254ad52d751e7397fb95aec631f/687474703a2f2f626574616e6577732e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031362f30342f70656e6775696e67756e2d363030783630302e6a7067" /></p>
+<ul>
+<li><strong>cs</strong>: 代码段寄存器: CPU启动的时候被初始化为0xf000, CS:IP是CPU源源不断执行指令的指明灯</li>
+<li><strong>ds</strong>: 数据段寄存器: generally points at segment where variables are defined</li>
+<li><strong>es</strong>: extra segment register: it's up to a coder to define its usage</li>
+<li><strong>fs, gs</strong>: fs,gs are commonly used by OS kernels to access thread-specific memory</li>
+<li><strong>ss</strong>: 栈段寄存器</li>
+</ul>
+<p>工作在平坦模式下, 每个段寄存器的基址都是0, (以为自己)独享整个4GB(32位)或者1MB(16位)的内存. 比较方便. 所以uiharu在构造各种段描述符(gdt,ldt, idt)的时候都认为工作在平坦模式下. <br/></p>
+<p>注意, 段寄存器不能直接被程序员赋值, 需要借助通用寄存器操作, 比如初始化</p>
+<div class="codehilite"><pre><span></span>mov ax, cs
+mov ds, ax
+mov es, ax
+mov fs, ax
+mov ss, ax
+</pre></div>
+
+
+<h2>BIOS中断</h2>
+<p><img alt="" src="https://static.mengniang.org/common/thumb/3/39/%E5%B0%8F%E5%BC%B7_-_%E3%83%AC%E3%83%99%E3%83%AB_%2836111656%29_.jpg/750px-%E5%B0%8F%E5%BC%B7_-_%E3%83%AC%E3%83%99%E3%83%AB_%2836111656%29_.jpg" /><br/>
+内核加载前, 操作系统没有自己的中断处理例程, 要想实现高级功能可以直接操作硬件端口(也就是各种专用寄存器), 但是比较麻烦, 需要看表设置很多寄存器位, 相比较而言, bios提供的中断程序就比较好用了. <br/>
+使用bios中断需要接指明中断号INT, 然后指明需要使用的功能号, 就可以用了.  特定的寄存器有特定的作用, 具体可以查看BIOS手册. <br/>
+下面列举几个uiharu用到的bios中断. <br/></p>
+<h3>bios 0x10中断</h3>
+<p>| 功能号 | 作用 |
+| ------ | ---  |
+| 0x06   | 上卷窗口|</p>
+<p>目前uiharu是通过bochs模拟器启动的, 所以进入工作状态前需要把bochs的启动信息清空, 这个bios中断就可以上卷窗口.</p>
+<div class="codehilite"><pre><span></span>mov ax, 0x0600  ; ax 寄存器放功能号
+mov cx, 0       ; cx 左上角坐标: (0, 0)
+mov dx, 0x184f  ; dx 右下角坐标: (0x18, 0x4f) -&gt; (24, 79)
+                ; VGA文本模式, 一行容纳80个字符, 共25行; 下标从0开始;
+                ; bochs x86模拟的是小端字节序
+int 0x10        ; 调用0x10中断, 清屏(0, 0)~(24, 79)的整屏窗口
+</pre></div>
+
+
+<p>| 功能号 | 作用 |
+| ------ | ---  |
+| 0x13   | 打印字符串 |</p>
+<p>一开始还没接触显卡的时候, 是使用bios打印(显示)字符串的</p>
+<div class="codehilite"><pre><span></span>mov ax, message ; ax 放待打印的信息
+mov bp, ax      ; es:bp 为串首地址, es此时的作用同cs一致. (上面说了es由程序员决定他的使用)
+mov cx, 5       ; cx为串长度
+mov ax, 0x1301  ; ax(al,ah)
+                ; 子功能号0x13显示字符及其属性存入ah寄存器
+                ; al设置写字符的方式, al=01: 显示字符串、光标跟随移动
+mov bx, 0x2     ; bx(bl,bh)
+                ; bh寄存器中存储要显示的页号, 第0页
+                ; bl寄存器放字符属性: 0x02(黑底绿字)
+int 0x10        ; 调用0x10中断, 以黑底绿字的形式在第一页开头打印字符串message
+</pre></div>
+
+
+<h3>bios 0x15中断</h3>
+<p>| 功能号 | 作用 |
+| ------ | ------ |
+| 0xe820 | 获取物理内存布局 |</p>
+<p>mbr加载loader以后, 在分页之前, 需要知道有多少蛋糕🍰 可以分, 也就是bochs模拟器给了多少实际内存. 我在bochs配置中声明分配32MB的内存,
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21089204/0dcdf394-c071-11e6-88df-5ca310d34d67.png" />
+现在通过bios检测, 看看实际的物理内存有没有32MB, 当然现在离kernel的加载还早着呢, 也只有bios可以用了.  <br/></p>
+<p>BIOS中断0x15的子功能0xe820可以获取系统的内存布局, 系统内存各部分的内存属性不同, BIOS按照类型属性来划分系统内存并查询返回. 为了更好的描述某属性的系统内存, 使用地址范围描述符(Address Range Descriptor Structure, ARDS)描述. ARDS结构如表: <br/></p>
+<p>| 字节偏移量 | 属性名称 | 描述 |
+| --- | --- | --- |
+| 0 | BaseAddrLow | 基地址的低32位 |
+| 4 | BaseAddrHigh | 基地址的高32位 |
+| 8 | LengthLow | 内存长度的低32位 |
+| 12 | LengthHigh | 内存长度的高32位 |
+| 16 | Type | 本段内存的类型 |</p>
+<p>内存有不同的属性, 我们希望检测出我们可以使用的最大内存, 但有些内存不是给我们用的. 这里系统内存是一个总的概念, 是指32位地址总线可以寻址的所有存储空间.<br/></p>
+<p>ARDS结构缓冲区定义</p>
+<div class="codehilite"><pre><span></span>ards_buf times 244 db 0 ; 一个ards结构体大小是20字节, 这里可以存放12(个240&lt;244)ards结构, 244是为了后面loader起始地址对齐
+ards_nr dw 0            ; 纪录缓冲区中ards结构体中的数目dw(2个字节16位, 足够了)
+</pre></div>
+
+
+<p>bios 0x15中断 0xe820子功能</p>
+<div class="codehilite"><pre><span></span><span class="nt">xor</span> <span class="nt">ebx</span><span class="o">,</span> <span class="nt">ebx</span>            <span class="o">;</span> <span class="err">清空</span><span class="nt">ebx</span><span class="o">,</span> <span class="err">随后每次调用</span><span class="nt">0x15</span><span class="err">中断</span><span class="o">,</span> <span class="nt">CPU</span><span class="err">会重置</span><span class="nt">ebx</span><span class="err">的值</span><span class="o">,</span> <span class="err">借助</span><span class="nt">ebx</span><span class="err">可以判断内存是否检测结束</span>
+<span class="nt">mov</span> <span class="nt">edx</span><span class="o">,</span> <span class="nt">0x534d4150</span>     <span class="o">;</span> <span class="s1">&#39;SMAP&#39;</span><span class="err">的</span><span class="nt">ASCII</span><span class="err">码</span><span class="o">,</span> <span class="err">用作校验签名</span>
+                        <span class="o">;</span> <span class="nt">BIOS</span><span class="err">将调用者正在请求的内存信息写入</span><span class="nt">es</span><span class="nd">:di</span><span class="err">寄存器指向的</span><span class="nt">ARDS</span><span class="err">缓冲区</span><span class="o">.</span>
+                        <span class="o">;</span> <span class="err">每执行中断一次就会得到一个</span><span class="nt">ARDS</span><span class="err">结构的数据</span><span class="o">,</span> <span class="err">放入缓冲区</span><span class="o">,</span> <span class="err">再用此签名校验其中的信息</span><span class="o">(</span><span class="err">与</span><span class="nt">eax</span><span class="err">比较</span><span class="o">)</span>
+<span class="nt">mov</span> <span class="nt">di</span><span class="o">,</span> <span class="nt">ards_buf</span>        <span class="o">;</span> <span class="nt">es</span><span class="nd">:di</span><span class="err">指向</span><span class="nt">ARDS</span><span class="err">结构缓冲区</span><span class="o">,</span> <span class="nt">es</span><span class="err">在</span><span class="nt">mbr</span><span class="err">中已经被赋值</span><span class="o">,</span> <span class="err">作用等同于</span><span class="nt">cs</span>
+
+<span class="nc">.e820_mem_get_loop</span><span class="o">:</span>     <span class="o">;</span> <span class="nt">e820</span><span class="err">号子功能循环检测内存</span>
+<span class="nt">mov</span> <span class="nt">eax</span><span class="o">,</span> <span class="nt">0x0000e820</span>     <span class="o">;</span> <span class="nt">eax</span><span class="err">存放子功能号</span><span class="nt">e820</span><span class="o">,</span>
+                        <span class="o">;</span> <span class="err">每执行一次中断</span><span class="o">,</span> <span class="nt">eax</span><span class="err">的值就会变成</span><span class="s2">&quot;SMAP&quot;</span><span class="err">的</span><span class="nt">ASCII</span><span class="err">码</span>
+                        <span class="o">;</span> <span class="err">每次调用中断前都要恢复为子功能号</span>
+<span class="nt">mov</span> <span class="nt">ecx</span><span class="o">,</span> <span class="nt">20</span>             <span class="o">;</span> <span class="nt">ARDS</span><span class="err">结构的字节大小</span><span class="o">:</span> <span class="nt">4</span><span class="o">(</span><span class="err">字节</span><span class="o">)*</span><span class="nt">5</span><span class="o">(</span><span class="err">表项</span><span class="o">)=</span><span class="nt">20</span><span class="err">字节</span><span class="o">,</span> <span class="nt">cx</span><span class="err">作为循环变量</span><span class="o">(</span><span class="err">默认</span><span class="o">)</span>
+<span class="nt">int</span> <span class="nt">0x15</span>                <span class="o">;</span> <span class="err">调用</span><span class="nt">bios</span> <span class="nt">0x15</span><span class="err">中断</span>
+<span class="nt">jc</span> <span class="nc">.e820_failed_so_try_e801</span> <span class="o">;</span> <span class="err">如果</span><span class="nt">e820</span><span class="err">子功能检测失败</span><span class="o">,</span> <span class="err">则使用</span><span class="nt">e801</span><span class="err">子功能</span>
+                        <span class="o">;</span> <span class="nt">jc</span><span class="err">是判断</span><span class="nt">eflags</span><span class="err">寄存器的</span><span class="nt">CF</span><span class="err">位</span><span class="o">,</span> <span class="nt">CF</span><span class="err">位为</span><span class="nt">0</span><span class="err">表示未出错</span><span class="o">,</span> <span class="nt">CF</span><span class="err">位为</span><span class="nt">1</span><span class="err">表示出错</span>
+<span class="nt">add</span> <span class="nt">di</span><span class="o">,</span> <span class="nt">cx</span>              <span class="o">;</span> <span class="err">增加</span><span class="nt">edi</span> <span class="nt">20</span><span class="err">字节</span><span class="o">,</span> <span class="err">使之指向新的</span><span class="nt">ARDS</span><span class="err">结构缓冲区位置</span>
+<span class="nt">inc</span> <span class="nt">word</span> <span class="cp">[</span><span class="nx">ards_nr</span><span class="cp">]</span>      <span class="o">;</span> <span class="nt">ards</span><span class="err">结构体的数量计数</span>
+<span class="nt">cmp</span> <span class="nt">ebx</span><span class="o">,</span> <span class="nt">0</span>              <span class="o">;</span> <span class="err">若</span><span class="nt">ebx</span><span class="o">=</span><span class="nt">0</span><span class="o">,</span> <span class="nt">CF</span><span class="o">=</span><span class="nt">0</span><span class="o">,</span> <span class="err">说明已是最后一个</span><span class="nt">ARDS</span>
+<span class="nt">jnz</span> <span class="nc">.e820_mem_get_loop</span>  <span class="o">;</span> <span class="nt">cmp</span><span class="o">&amp;&amp;</span><span class="nt">jnz</span><span class="o">,</span> <span class="nt">cmp</span><span class="err">用于比较</span><span class="o">,</span> <span class="err">如果相等会置</span><span class="nt">ZF</span><span class="o">=</span><span class="nt">0</span>
+                        <span class="o">;</span> <span class="nt">jnz</span><span class="err">的全写是</span><span class="nt">jump</span> <span class="nt">if</span> <span class="nt">not</span> <span class="o">(</span><span class="nt">ZF</span><span class="o">)</span><span class="nt">zero</span><span class="o">,</span> <span class="err">所以如果</span><span class="nt">ebx</span><span class="err">为</span><span class="nt">0</span><span class="o">,</span><span class="err">检测到最后一个</span><span class="nt">ARDS</span><span class="err">结构就会终止内存检测循环</span>
+<span class="nt">mov</span> <span class="nt">cx</span><span class="o">,</span> <span class="cp">[</span><span class="nx">ards_nr</span><span class="cp">]</span>       <span class="o">;</span> <span class="nt">cx</span><span class="err">作为循环变量</span><span class="o">(</span><span class="err">默认</span><span class="o">)</span>
+<span class="nt">mov</span> <span class="nt">ebx</span><span class="o">,</span> <span class="nt">ards_buf</span>       <span class="o">;</span> <span class="nt">ebx</span><span class="err">指向</span><span class="nt">ards</span><span class="err">缓冲区的起始地址</span><span class="o">(</span><span class="err">此时</span><span class="nt">ebx</span><span class="err">闲置</span><span class="o">,</span><span class="err">可以使用</span><span class="o">)</span>
+<span class="nt">xor</span> <span class="nt">edx</span><span class="o">,</span> <span class="nt">edx</span>            <span class="o">;</span> <span class="nt">edx</span><span class="err">用于存储最大物理内存的容量</span><span class="o">,</span> <span class="err">先清</span><span class="nt">0</span>
+
+<span class="nc">.find_max_mem_area</span><span class="o">:</span>
+<span class="nt">mov</span> <span class="nt">eax</span><span class="o">,</span> <span class="cp">[</span><span class="nx">ebx</span><span class="cp">]</span>          <span class="o">;</span> <span class="nt">eax</span><span class="err">存放第一个表项</span><span class="o">:</span> <span class="err">基地址的低</span><span class="nt">32</span><span class="err">位</span>
+<span class="nt">add</span> <span class="nt">eax</span><span class="o">,</span> <span class="cp">[</span><span class="nx">ebx</span><span class="o">+</span><span class="mi">8</span><span class="cp">]</span>        <span class="o">;</span> <span class="nt">eax</span><span class="err">存放第</span><span class="nt">3</span><span class="err">个表项</span><span class="o">:</span> <span class="err">内存长度的低</span><span class="nt">32</span><span class="err">位</span> <span class="nt">-</span><span class="o">&gt;</span> <span class="err">需要的</span>
+                        <span class="o">;</span> <span class="err">保护模式最大寻址空间</span><span class="nt">32</span><span class="err">位</span><span class="o">,</span> <span class="err">低</span><span class="nt">32</span><span class="err">位就够了</span>
+<span class="nt">add</span> <span class="nt">ebx</span><span class="o">,</span> <span class="nt">20</span>             <span class="o">;</span> <span class="nt">ebx</span><span class="err">指向下一个属性的内存段</span>
+<span class="nt">cmp</span> <span class="nt">edx</span><span class="o">,</span> <span class="nt">eax</span>            <span class="o">;</span> <span class="err">比较</span><span class="nt">edx</span><span class="err">和</span><span class="nt">eax</span>
+<span class="o">;</span> <span class="err">比较排序</span><span class="o">,</span> <span class="err">找出最大内存容量放在</span><span class="nt">edx</span><span class="err">寄存器中</span>
+<span class="nt">jge</span> <span class="nc">.next_ards</span>          <span class="o">;</span> <span class="err">如果</span><span class="nt">edx</span><span class="o">&gt;</span><span class="nt">eax</span><span class="o">,</span> <span class="err">继续循环</span>
+<span class="nt">mov</span> <span class="nt">edx</span><span class="o">,</span> <span class="nt">eax</span>            <span class="o">;</span> <span class="err">否则</span><span class="o">,</span> <span class="err">把</span><span class="nt">eax</span><span class="err">赋值给</span><span class="nt">edx</span>
+<span class="nc">.next_ards</span><span class="o">:</span>
+    <span class="nt">loop</span> <span class="nc">.find_max_mem_area</span>
+    <span class="nt">jmp</span> <span class="nc">.mem_get_ok</span>     <span class="o">;</span> <span class="err">查找成功</span><span class="o">,</span> <span class="nt">edx</span><span class="err">就是最大系统内存段的大小</span><span class="o">,</span><span class="err">也就是我们可以使用的物理内存</span>
+</pre></div>
+
+
+<p>0x15中断的e801、0x88子功能也可以检测内存, 不过检测的能力差些, e801最多检测4G(想想也够用), 0x88只能检测到64MB的内存, 这里就不详细写了...一个e820就够复杂了!<br/>
+更多关于内存检测可以看<a href="http://wiki.osdev.org/Detecting_Memory_(x86)">detecting memory</a>, OSDEV-WIKI上有很多关于操作系统开发的资料! <br/></p>
+<h2>与外设打交道</h2>
+<p><img alt="" src="http://s1.51cto.com/wyfs02/M00/24/A6/wKioL1NUj5DDL7PIAAB_XwYlyGg291.jpg" /> <br/>
+操作系统工作的很大一块就是同各种外设打交道, 避免了用户(操作系统的使用者)直接面对五花八门的硬件. 当然了操作系统也不是直接面对硬件的, 如果操作系统直接控制硬件, 硬件那么多, 不同厂商造的硬件不一样, 那么兼容都要烦死. 在计算机和网络的世界, 凡是遇到兼容、沟通, 必然是有一套规范和接口的, Python Web的WSGI、前后端交互的RestfulAPI... CPU和外设之间也有接口, 这就是IO适配器, 也就是各种端口寄存器, 通过设置这些寄存器, 就可以很好的控制硬件, 硬件只要提供这些接口就行了. 所以说操作系统虽然是底层, 但也是API驱动呢. 毕竟计算机、编程能发展到今天这样蓬勃的状态, 一切都是站在巨人的肩膀上! <br/></p>
+<h3>控制显卡</h3>
+<p>显卡就是CPU和显示器之间的适配器! 之前用bios 0x10终端打印字符串, 有点小麻烦. 使用显卡就简化了许多, 把字符丢显存里就可以行了, 初始化显存段gs就可以用了</p>
+<div class="codehilite"><pre><span></span><span class="nt">mov</span> <span class="nt">byte</span> <span class="cp">[</span><span class="nx">gs</span><span class="p">:</span><span class="mh">0x00</span><span class="cp">]</span><span class="o">,</span> <span class="s1">&#39;n&#39;</span>     <span class="o">;</span> <span class="err">一个字符</span><span class="nt">2</span><span class="err">个字节</span><span class="o">,</span> <span class="err">低一字节表示这个字符的</span><span class="nt">ASCII</span><span class="err">码</span><span class="o">,</span>
+<span class="nt">mov</span> <span class="nt">byte</span> <span class="cp">[</span><span class="nx">gs</span><span class="p">:</span><span class="mh">0x01</span><span class="cp">]</span><span class="o">,</span> <span class="s1">&#39;0xA4&#39;</span>  <span class="o">;</span> <span class="err">高字节确定这个字符的属性</span><span class="o">(</span><span class="err">比如这里</span><span class="o">:</span><span class="err">绿色背景、红色前景、一闪一闪亮晶晶✨</span> <span class="o">)</span>
+</pre></div>
+
+
+<h3>控制硬盘</h3>
+<p>硬盘可是很重要的一个东西, 计算机启动前, mbr、loader、kernel可都是放在硬盘里的, 再拷贝到内存低端1MB的相应位置. <br/>
+硬盘我之前已经总结过了, <a href="https://neo1218.github.io/disk/">戳这里</a>就行了! <br/>
+更新一篇更细节的: <a href="https://neo1218.github.io/asm-disk/">用汇编读写硬盘</a></p>
+<h3>恶心的8259A中断代理芯片</h3>
+<p>每个外设都可以向CPU发射中断信号请求调用相应的中断例程. CPU同一时间只能处理一个中断, 那么先处理哪个中断, 哪个中断比较重要就需要某个部件进行判断和规划, 维护一个中断信号池, CPU是宝贵的, 这种简单但繁杂的工作还是交给专门的可编程设备去做吧, 这就是8259A中断代理芯片. <br/>
+<img alt="8259A芯片内部结构" src="https://cloud.githubusercontent.com/assets/10671733/21099929/061df352-c0ac-11e6-8ce1-324a4787561a.png" /> <br/></p>
+<ul>
+<li>INT: 8259A选出优先级最高的中断请求后, 发信号通知CPU</li>
+<li>INTA: INT Acknowledge, 中断响应信号. 上图INTA接收来自CPU的INTA接口的中断响应信号</li>
+<li>IMR: Interrupt Mask Register, 中断屏蔽寄存器, 用来屏蔽某个外设的中断</li>
+<li>IRR: Interrupt Request Register, 中断请求寄存器, 接收经过IMR过滤后的中断信号, 相当于中断信号队列</li>
+<li>PR: Priority Resolver, 优先级仲裁器, 找出优先级更高的中断发向CPU, 一般中断向量号越低, 优先级越高</li>
+<li>ISR: In-Service Register, 中断服务寄存器, 某个中断被处理,从IRR、PR中移除, 放到这里</li>
+</ul>
+<p>这些寄存器都是8位的. 8个IRQ接口与8位寄存器的每一位对应, 这样每一位就可以表示一个来自外设的中断信号, 即接口的位图! 不得不感叹一下虽然只有0和1, 可是在硬件工程师手里也能设计出神奇的花样! <br/>
+嗯, 结构挺简单不是? 4个寄存器、2个信号, 分工明确、作用清晰. 一个8259A确实简单, 可是多个8259A串联在一起, 就十分恶心了, 一个8259A只能处理8个中断, 而中断向量号有256个(0~255), 所以需要36个8259A芯片. 好吧, 用不了这么多, 我们电脑上8259A芯片就2个, 级联在一起可以同时处理15个中断，够用了. 级联一个从片需要占用主片的一个IRQ引脚,不用占用从片处理中断的引脚, 直接把从片的INT插到主片的IRQ上就行了. 2个片, 也够复杂的了!<br/>
+8259A内部有2组寄存器用于初始化和操作8259A芯片 <br/></p>
+<ul>
+<li>ICW: Initialization Command Words: 初始化命令寄存器组<ul>
+<li>ICW1, ICW2, ICW3, ICW4</li>
+</ul>
+</li>
+<li>OCW: Operation Command Words: 操作命令寄存器组<ul>
+<li>OCW1, OCW2, OCW3, OCW4</li>
+</ul>
+</li>
+</ul>
+<p>通过这2组寄存器里的寄存器, 我们可以设置<strong>8259A是否级联</strong>, <strong>起始中断向量号</strong>, <strong>中断结束模式</strong>, <strong>屏蔽哪些外设中断</strong>, <strong>设定中断优先级</strong>. 这里直接上代码和注释:</p>
+<div class="codehilite"><pre><span></span>static void pic_init(void) {
+    /* pic_init: 初始化8259A PIC芯片
+     *   向8259A主片、从片要求的端口发送设置位,
+     *   即可进行初始化(ICW寄存器组)和操作(OCW寄存器组)
+     *   ICW: 设置是否级联、起始中断向量号(顺延), 中断结束模式
+     *      - ICW1: 设置连接方式和中断信号的触发方式(电平触发、边沿触发)
+     *      - ICW2: 设置起始中断向量号, 硬件IRQ0映射到的中断向量号, 其余顺延
+     *      - ICW3: (需要写入主片的0x21从片的0xA1端口) 1-&gt;连接从片 0-&gt;连接外设
+     *              低3位指定与主片级联的IRQ端口号
+     *      - ICW4: 设置8259A的工作模式(写入主片的0x21及从片的0xA1端口)
+     *   OCW: 操作8259A芯片
+     *      - OCW1: 屏蔽连接在8259A上的外设中断信号, OCW1写入了IMR寄存器
+     *              (需要写入主片的0x21端口,从片的0xA1端口)
+     *              每一位对应IRQ接口, 体现了位图的思想(方便定位与控制中断)
+     *      - OCW2: 设置中断结束方式以及优先级模式
+     *              (需要写入主片的0x20以及从片的0xA0端口)
+     *      - OCW3: 设定特殊屏蔽方式和查询方式
+     *              (需要写入主片的0x20以及从片的0xA0端口)
+     */
+    // 初始化主片
+    // 往主片中写入ICW1(设置工作模式: 边沿触发、级联)
+    outb (PIC_M_CTRL, 0x11); // ic4为1, 后需写入ic4寄存器
+                             // sngl为0表示采用级联模式
+                             // 设置8085CPU的调用时间间隔(兼容无设)
+                             // LTIM为0设置边沿触发方式
+    // 往主片中写入ICW2(设置起始中断向量号)
+    outb (PIC_M_DATA, 0x20); // 起始中断向量号32, 其余由IRQ接口顺延
+    // 往主片中写入ICW3(设置主从级联时用到的引脚)
+    outb (PIC_M_DATA, 0x04); // 使用S2引脚连接主片和从片
+    // 往主片中写入ICW4
+    outb (PIC_M_DATA, 0x01); // 设置uPM位为1(x86处理器)
+
+    // 初始化从片
+    // 往从片中写ICW1, 同主片设置
+    outb (PIC_S_CTRL, 0x11);
+    // 往从片中写ICW2
+    outb (PIC_S_DATA, 0x28); // 每个片对应着8个中断向量
+    outb (PIC_S_DATA, 0x02); // 从片使用S1引脚连接
+    outb (PIC_S_DATA, 0x01); // 设置uPM位为1(x86处理器)
+
+    // 打开主片上IR0, 接受时钟产生的中断
+    // 此时向8259A发送的命令操作属于OCW
+    outb (PIC_M_DATA, 0xfe);
+    outb (PIC_S_DATA, 0xff);
+
+    print_string(&quot;pic init done!\n&quot;);
+}
+</pre></div>
+
+
+<p>炸一看, 居然使用C写的(好激动)! 其实真正干活的outb还是用gcc内联汇编写的(后面会介绍内联汇编)</p>
+<div class="codehilite"><pre><span></span>static inline void outb(uint16_t port, uint8_t data) {
+    /* outb: 向端口port写入一个字节
+     *   port: 指定端口寄存器
+     *   data: 待写入的一个字节数据
+     */
+    asm volatile (&quot;outb %b0, %w1&quot;
+        :
+        : &quot;a&quot; (data), &quot;Nd&quot; (port)
+    );
+}
+</pre></div>
+
+
+<p>outb可是字符串搬运团队的一员哦! <br/>
+print_string是啥?C语言不是printf吗(一脸蒙B)? print_string是uiharuos独有之库函数😄 , 基于print_char实现</p>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;print.h&quot;</span><span class="cp"></span>
+
+<span class="kt">void</span> <span class="nf">print_string</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span><span class="o">*</span> <span class="n">addr</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">addr</span> <span class="o">=</span> <span class="n">string</span><span class="p">;</span> <span class="o">*</span><span class="n">addr</span> <span class="o">!=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span> <span class="n">addr</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">print_char</span><span class="p">(</span><span class="o">*</span><span class="n">addr</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>print_char的底层还是汇编控制显卡那一套, <a href="https://github.com/UiharuOS/uiharu/blob/master/lib/kernel/print.S">代码在这里</a>, 不介绍了.. <br/>
+与之配套的还有, print_int, 以前最恨什么10进制转16进制、2进制, 于是可以这样:</p>
+<div class="codehilite"><pre><span></span>print_int(10, &#39;D&#39;) -&gt; 10
+print_int(10, &#39;H&#39;) -&gt; A
+print_int(10, &#39;B&#39;) -&gt; 1010
+</pre></div>
+
+
+<p>代码实现也不难, 复杂的地方都被print_char给做了</p>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;print.h&quot;</span><span class="cp"></span>
+
+<span class="kt">void</span> <span class="nf">_dec_print</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">integer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">_integers</span><span class="p">[</span><span class="mi">10</span><span class="p">];</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">integer</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">integer</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+        <span class="n">integer</span> <span class="o">/=</span> <span class="mi">10</span><span class="p">;</span>
+        <span class="n">count</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">print_char</span><span class="p">(</span><span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">48</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">_hex_print</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">integer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_num</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">_integers</span><span class="p">[</span><span class="mi">10</span><span class="p">];</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">integer</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">integer</span> <span class="o">%</span> <span class="mi">16</span><span class="p">;</span>
+        <span class="n">integer</span> <span class="o">/=</span> <span class="mi">16</span><span class="p">;</span>
+        <span class="n">count</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_num</span> <span class="o">=</span> <span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+        <span class="k">if</span>      <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;0&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;1&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;2&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;3&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">4</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;4&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">5</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;5&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">6</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;6&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">7</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;7&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">8</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;8&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">9</span><span class="p">)</span>  <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;9&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;a&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">11</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;b&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">12</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;c&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">13</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;d&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">14</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;e&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">15</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;f&#39;</span><span class="p">);</span> <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">_bin_print</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">integer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_num</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">_integers</span><span class="p">[</span><span class="mi">35</span><span class="p">];</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">integer</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">integer</span> <span class="o">%</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">integer</span> <span class="o">/=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">count</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_num</span> <span class="o">=</span> <span class="n">_integers</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+        <span class="k">if</span>      <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;0&#39;</span><span class="p">);</span> <span class="p">}</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_num</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span> <span class="n">print_char</span><span class="p">(</span><span class="sc">&#39;1&#39;</span><span class="p">);</span> <span class="p">}</span>
+    <span class="p">}</span>
+
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">print_int</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">integer</span><span class="p">,</span> <span class="kt">char</span> <span class="n">mode</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span>      <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="sc">&#39;D&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_dec_print</span><span class="p">(</span><span class="n">integer</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="sc">&#39;H&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_hex_print</span><span class="p">(</span><span class="n">integer</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="sc">&#39;B&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_bin_print</span><span class="p">(</span><span class="n">integer</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h2>描述符表</h2>
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21102341/c3a54fae-c0b8-11e6-92ec-2617bd26a06c.png" /> <br/>
+早期实模式下, 可没什么描述符, 段基址指向物理地址, 结合段内偏移地址, 指哪打哪. 不过随着操作系统的发展, 保护就显得十分必要了, 可不能什么程序都能覆盖操作系统啊! 更不能什么进程都可以直接读写硬盘, 那就乱了套. 于是就有了保护模式, 可是保护从何谈起呢? 想想很简单: 加属性! 我和习大大都是人(ps:不会被和谐吧...), 为什么保镖都去保护他, 不保护我呢? 因为他是<strong>[天朝男一号]</strong>, 这<strong>[天朝男一号]</strong>就是一个属性,加了这个属性, 我和他就是不同的人了(记住一句话:权利越大、能力越大、责任越大, 否则就乱了, 操作系统工作在0特权级下不是因为长得帅, 因为他要处理很多事情, 要面对硬件, 还要分配特权级...~~好像没什么不对的~~). 同样给内存段加上不同的属性就可以区别不同的内存段, 这些属性的集合就是描述符, 各个内存段的描述符就被放在描述符表里. <br/></p>
+<h3>全局描述符表 GDT</h3>
+<p>保护模式的一个重要特性就是分段, 保护模式不仅仅意味着32位的地址空间, 分了段才有区别, 有了区别才有保护. <br/>
+说实话, 构造段描述符表就简单多了... 2个步骤:</p>
+<ol>
+<li>构造段描述符</li>
+<li>构造段描述符表</li>
+</ol>
+<p>不过描述符大小8字节64位设置还是有点恶心, 具体看我的<a href="https://neo1218.github.io/gdt/">这篇博客吧</a>. <br/></p>
+<h3>中断描述符表 IDT</h3>
+<p>之前介绍了8259A代理芯片, 8259A只是众多可编程中断控制器(PIC)的一只. 仅仅发送中断信号可不行, 操作系统需要找到相应的中断处理例程上CPU执行才算处理完中断. 如何找呢? 简单! 查表, 查中断描述符表. <br/>
+先介绍一下中断处理设计的基本思路, 其实中断处理是CPU和8259A的事情, 操作系统需要提供的是数据, 即IDT, 以及初始化pic(8259A), pic_init前面已经上过代码了, 那如何设计IDT呢? <br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21103186/5fdf1ca8-c0bc-11e6-9f52-c01f2a6fbe9b.png" /></p>
+<p>很简单, 上面也说了, 就是把中断向量号(8259A给中断分配的)和中断处理例程对应起来. <br/>
+中断向量号是在汇编里分配的</p>
+<div class="codehilite"><pre><span></span>; 构建33个中断向量处理程序
+VECTOR 0x00,ZERO
+VECTOR 0x01,ZERO
+VECTOR 0x02,ZERO
+VECTOR 0x03,ZERO
+VECTOR 0x04,ZERO
+VECTOR 0x05,ZERO
+VECTOR 0x06,ZERO
+VECTOR 0x07,ZERO
+VECTOR 0x08,ZERO
+VECTOR 0x09,ZERO
+VECTOR 0x0a,ZERO
+VECTOR 0x0b,ZERO
+VECTOR 0x0c,ZERO
+VECTOR 0x0d,ZERO
+VECTOR 0x0e,ZERO
+VECTOR 0x0f,ZERO
+VECTOR 0x10,ZERO
+VECTOR 0x11,ZERO
+VECTOR 0x12,ZERO
+VECTOR 0x13,ZERO
+VECTOR 0x14,ZERO
+VECTOR 0x15,ZERO
+VECTOR 0x16,ZERO
+VECTOR 0x17,ZERO
+VECTOR 0x18,ZERO
+VECTOR 0x19,ZERO
+VECTOR 0x1a,ZERO
+VECTOR 0x1b,ZERO
+VECTOR 0x1c,ZERO
+VECTOR 0x1d,ZERO
+VECTOR 0x1e,ERROR_CODE
+VECTOR 0x1f,ZERO
+VECTOR 0x20,ZERO
+</pre></div>
+
+
+<p>这里利用了汇编中的宏去定义每个中断向量, 每个宏里面call调用C语言idt_table的中断处理程序</p>
+<div class="codehilite"><pre><span></span><span class="nf">%macro</span> <span class="n">VECTOR</span> <span class="mi">2</span>
+<span class="n">section</span> <span class="p">.</span><span class="n">text</span>
+<span class="p">;</span> <span class="err">中断处理程序</span>
+<span class="n">intr</span><span class="o">%</span><span class="mi">1</span><span class="nl">entry</span><span class="p">:</span>            <span class="p">;</span> <span class="err">每个标号对应着一个中断向量号</span><span class="o">-&gt;</span><span class="err">中断处理程序</span>
+    <span class="o">%</span><span class="mi">2</span>
+    <span class="p">;</span> <span class="err">保存上下文环境</span>
+    <span class="n">push</span> <span class="n">ds</span> 
+    <span class="n">push</span> <span class="n">es</span>
+    <span class="n">push</span> <span class="n">fs</span>
+    <span class="n">push</span> <span class="n">gs</span> <span class="p">;</span> <span class="err">这些寄存器的作用前面有说就不介绍啦</span>
+    <span class="n">pushad</span>
+
+    <span class="p">;</span> <span class="err">如果是从</span><span class="p">[</span><span class="err">从片</span><span class="p">]</span><span class="err">上进入的中断</span><span class="p">,</span> <span class="err">除了往</span><span class="p">[</span><span class="err">从片</span><span class="p">]</span><span class="err">上发送</span><span class="n">EOI</span><span class="err">外</span><span class="p">,</span> <span class="err">还要往</span><span class="p">[</span><span class="err">主片</span><span class="p">]</span><span class="err">上发送</span><span class="n">EOI</span>
+    <span class="p">;</span> <span class="err">因为</span><span class="n">CPU</span><span class="err">接受中断</span><span class="p">,</span> <span class="err">返回中断响应</span><span class="p">,</span> <span class="err">都是和主片进行交互的</span>
+    <span class="n">mov</span> <span class="n">al</span><span class="p">,</span> <span class="mh">0x20</span>        <span class="p">;</span> <span class="n">EOI</span><span class="err">命令</span><span class="mi">8259</span><span class="n">A</span><span class="err">的</span><span class="n">OCW2</span><span class="err">控制</span>
+    <span class="n">out</span> <span class="mh">0xa0</span><span class="p">,</span> <span class="n">al</span>        <span class="p">;</span> <span class="err">向从片发送</span><span class="n">EOI</span>
+    <span class="n">out</span> <span class="mh">0x20</span><span class="p">,</span> <span class="n">al</span>        <span class="p">;</span> <span class="err">向主片发送</span><span class="n">EOI</span>
+
+    <span class="n">push</span> <span class="o">%</span><span class="mi">1</span> <span class="p">;</span> <span class="err">压入中断向量号</span><span class="p">,</span> <span class="err">与中断处理程序对应</span><span class="p">,</span> <span class="err">方便异常处理</span>
+
+    <span class="n">call</span> <span class="p">[</span><span class="n">idt_table</span> <span class="o">+</span> <span class="p">(</span><span class="o">%</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">;</span> <span class="err">调用</span><span class="n">idt_table</span><span class="err">中</span><span class="n">C</span><span class="err">版本的中断处理函数</span><span class="p">,</span> <span class="err">内存寻址</span><span class="p">,</span> <span class="err">调用该内存段上的中断处理程序</span>
+    <span class="n">jmp</span> <span class="n">intr_exit</span>
+
+<span class="n">section</span> <span class="p">.</span><span class="n">data</span>
+    <span class="n">dd</span> <span class="n">intr</span><span class="o">%</span><span class="mi">1</span><span class="n">entry</span>      <span class="p">;</span> <span class="err">存储中断入口程序地址</span>
+                        <span class="p">;</span> <span class="err">这些数据段最终会被合并</span><span class="p">,</span> <span class="err">从而</span>
+                        <span class="p">;</span> <span class="err">构造</span><span class="n">intr_entry_table</span><span class="err">数组</span>
+<span class="nf">%endmacro</span>
+</pre></div>
+
+
+<p>而且注释里也说了, 相邻的小代码段section .data会被汇编器合并为一个大的segment, 后面介绍ELF的时候会具体介绍. <br/>
+注册idt_table的程序如下:</p>
+<div class="codehilite"><pre><span></span>static void exception_init(void) {
+    /* exception_init: 完成一般中断处理函数注册及异常名称注册
+     */
+    int i;
+    for(i=0; i&lt;IDT_DESC_CNT; i++) {
+        // 初始化中断程序数组; 初始化中断异常数组
+        idt_table[i] = general_intr_handler;  // 中断处理程序
+        intr_name[i] = &quot;unknown&quot;;  // 先统一初始化为 unknown, 保证33个不为空
+    }
+    // 初始化20个中断异常
+    intr_name[0] = &quot;#DE Divide Error&quot;;
+    intr_name[1] = &quot;#DB Debug Exception&quot;;
+    intr_name[2] = &quot;    NMI Interrupt&quot;;
+    intr_name[3] = &quot;#BP Breakpoint Exception&quot;;
+    intr_name[4] = &quot;#OF Overflow Exception&quot;;
+    intr_name[5] = &quot;#BR BOUND Range Exceeded Exception&quot;;
+    intr_name[6] = &quot;#UD Invalid Opcode Exception&quot;;
+    intr_name[7] = &quot;#NM Device Not Available Exception&quot;;
+    intr_name[8] = &quot;#DF Double Fault Exception&quot;;
+    intr_name[9] = &quot;#MF Coprocessor Segment Overrun&quot;;
+    intr_name[10]= &quot;#TS Invalid TSS Exception&quot;;
+    intr_name[11]= &quot;#NP Segment Not Present&quot;;
+    intr_name[12]= &quot;#SS Stack Fault Exception&quot;;
+    intr_name[13]= &quot;#GP General Protection Exception&quot;;
+    intr_name[14]= &quot;#PF Page-Fault Exception&quot;;
+    // intr_name[15]= &quot;第15项是intel保留项, 未使用&quot;
+    intr_name[16]= &quot;#MF x87 FPU Floating-Point Error&quot;;
+    intr_name[17]= &quot;#AC Alignment Check Exception&quot;;
+    intr_name[18]= &quot;#MC Machine-check Exception&quot;;
+    intr_name[19]= &quot;#XM SIMD Floating-Point Exception&quot;;
+}
+</pre></div>
+
+
+<p>general_intr_handler是通用中断处理程序, 可以被设备中断处理程序覆盖的</p>
+<div class="codehilite"><pre><span></span>static void general_intr_handler(uint8_t vec_nr) {
+    /* general_intr_handler: 中断处理函数, 出现异常时处理
+     *   vec_tr: 中断向量号
+     *   相关中断如果没有定义相应的中断处理函数, 则调用此通用中断处理函数(初始化)
+     */
+    if(vec_nr == 0x27 || vec_nr == 0x2f) {
+        // IRQ7 和 IRQ15 会产生伪中断, 无需处理
+        // 伪中断(spurious interrupt) 
+        return;
+    }
+    print_string(&quot;int vector : 0x&quot;);
+    print_int(vec_nr, &#39;H&#39;);  // hex idt vector id
+    print_string(&quot;\n&quot;);
+}
+</pre></div>
+
+
+<p>所以汇编中push %1压入宏的第一个参数(中断向量号)就到了这里, 这里的中断处理仅仅是打印中断向量号(16进制), 方便调试. <br/>
+准备了这么多, 现在可以构建中断描述符了!</p>
+<div class="codehilite"><pre><span></span>void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) {
+    /* make_idt_desc: 创建中断门描述符
+     *  - p_gdesc: 指向中断门描述符的指针
+     *  - attr: 8位属性位
+     *  - function: 中断处理程序(门描述符对应的代码段), 这里利用了一个特性:函数名即首地址
+     */
+    p_gdesc-&gt;func_offset_low_word = (uint32_t)function &amp; 0x0000FFFF; // 中断处理函数的低16位
+    p_gdesc-&gt;selector = SELECTOR_K_CODE; // 中断处理函数代码段选择子
+    p_gdesc-&gt;dcount = 0; // 固定位, 置为0
+    p_gdesc-&gt;attribute = attr; // 属性位
+    p_gdesc-&gt;func_offset_high_word = ((uint32_t)function &amp; 0xFFFF0000) &gt;&gt; 16; // 中断处理函数的高16位
+}
+</pre></div>
+
+
+<p>呼, 准备了这么多, 构造中断描述符表就简单了!</p>
+<div class="codehilite"><pre><span></span>static struct gate_desc idt[IDT_DESC_CNT];
+// 使用汇编中的 intr_entry_table
+extern intr_handler intr_entry_table[IDT_DESC_CNT];
+
+static void idt_desc_init(void) {
+    /* idt_desc_init: 初始化中断描述符
+     */
+    int i;
+    for(i = 0; i &lt; IDT_DESC_CNT; i++) {
+        // intr_entry_table[i] 第i个中断向量对应的中断处理例程
+        make_idt_desc(&amp;idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
+    }
+    print_string(&quot;idt desc init done\n&quot;);
+}
+
+void idt_init(void) {
+
+    /* idt_init: 初始化中断描述符表
+     */
+    print_string(&quot;idt_init start\n&quot;);
+    idt_desc_init();  // 初始化中断描述符
+    exception_init(); // 异常名初始化并注册通常的中断处理函数
+    pic_init();       // 初始化中断代理芯片(ex:8259A)
+    uint64_t idt_operand = (
+        (sizeof(idt) - 1) | ((uint64_t)(
+            (uint32_t)idt &lt;&lt; 16)
+        )
+    ); // 组装IDTR
+    asm volatile (
+        &quot;lidt %0&quot;
+        :
+        : &quot;m&quot; (idt_operand)
+    );  // 加载idt
+    print_string(&quot;idt init done\n&quot;);
+}
+</pre></div>
+
+
+<p>这里把idt基址用lidt装进idtr寄存器就可以用了.<br/>
+<img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21104627/3e4e0b16-c0c2-11e6-8d07-17794a68865d.png" /></p>
+<hr/>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

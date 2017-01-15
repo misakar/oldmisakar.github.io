@@ -30,7 +30,7 @@
 我下面会用代码实现并查集以及对并查集的操作, 并逐层次的改进代码!</p>
 <h1>并查集算法实现</h1>
 <h2>算法一: UnionFind</h2>
-<pre><code>// UnionFind: 并查集实现
+<div class="codehilite"><pre><span></span>// UnionFind: 并查集实现
 // 数据结构: 用一个数组id[]表示并查集
 //           id[]数组中的每一个元素表示一个节点
 //           每一元素的的索引表示这个节点所在的组
@@ -70,14 +70,16 @@ public class UnionFind
         return id[p] == id[q]
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>算法二: QuickUnion</h2>
 <p>使用数组表示并查集是一个简单的做法, 方便我们去理解, 但是实际问题的规模都是很大的,
 使用数组构造并查集的时间复杂度是O(N)[连接遍历], 随着问题规模的增大, 构造花费的时间就越多。那么有没有更好的一种结构方便节点的分组和同组节点的查找呢?<br/>
 <strong>树</strong>就是一种很好的结构,
 如果用树的根节点而不是数组的索引表示并查集中节点所在的组编号,那么我们在连接时只需要merge元素到根节点,
 在判断时只需要查找根节点即可。</p>
-<pre><code>// QuickUnion算法: 使用树结构实现并查集
+<div class="codehilite"><pre><span></span>// QuickUnion算法: 使用树结构实现并查集
 // 数据结构: 依然是一个整数数组id, 但是不再用数组的索引表示组编号
 // 而是用id[i]表示节点i的组编号, 即构造树结构
 
@@ -124,7 +126,9 @@ public class QuickUnion
         return root[p] == root[q];
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>算法三: Weighted QuickUnion</h2>
 <p>快速连接算法利用树结构巧妙避开了查找过程中问题规模对算法复杂度的影响(查找根节点的过程),
 但是可以看出树的深度对算法效率的影响很大,
@@ -132,7 +136,7 @@ public class QuickUnion
 并将规模小的组merge到规模大的组, 从而减少连接以后整个分组树的深度(如图)<br/>
 <img alt="merge" src="http://my.csdn.net/uploads/201206/12/1339479587_5986.png" /><br/>
 所以我们需要在QuickUnion的基础上增加对组规模的判断, 这就是Weighted QuickUnion:</p>
-<pre><code>// WeightedQuickUnion: 带规模的快速连接, 用于减少构造树的深度
+<div class="codehilite"><pre><span></span>// WeightedQuickUnion: 带规模的快速连接, 用于减少构造树的深度
 // 在QuickUnion的基础上增加size数组表示每个根节点标识组的节点规模(个数)
 // size数组初始化为每个节点规模为1
 
@@ -193,7 +197,9 @@ public class WeightedQuickUnion
         return root[p] == root[q];
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>算法四: Weighted QuickUnion with Path Compression</h2>
 <p>我们会进一步思考: 如何构造一个理想的树, 一个扁平的、所有孩子节点都在第一层的树.
 构造理想树的关键就是减少中间节点的数量,
@@ -206,7 +212,7 @@ public class WeightedQuickUnion
 减少中间节点我们可以在while遍历的过程中将中间节点指向他的爷爷节点,
 这样既可以使树扁平化, 也不会有额外的空间开销! <br/>
 只需在while循环中增加一行代码:</p>
-<pre><code>int root(int i)
+<div class="codehilite"><pre><span></span>int root(int i)
 {
     while (i != id[i])
     {
@@ -216,9 +222,11 @@ public class WeightedQuickUnion
         i = id[i]; // DFS
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>四种并查集实现的比较</h2>
-<pre><code>算法      构造函数       Union        Connected
+<div class="codehilite"><pre><span></span>算法      构造函数       Union        Connected
 -----------------------------------------------
 UnionFind    N             N             1
 -----------------------------------------------
@@ -232,7 +240,9 @@ QuickUnion   N          Very near to  Very near
 with Path                   1           to 1
 Compression
 -----------------------------------------------
-</code></pre>
+</pre></div>
+
+
 <h1>参考</h1>
 <ul>
 <li>普林斯顿算法课程part1: 并查集</li>

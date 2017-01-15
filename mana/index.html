@@ -35,40 +35,46 @@ flask编写的web应用也是跨平台的,所以mana作为构建flask项目的�
 <p>第二点flask框架已经实现了, 所以我需要实现第一点。<br/>
 实现第一点需要考虑mana作为一个项目构建工具的特点: 自动构建目录(文件夹)和文件,
 我之所以一开始只能用在类unix系统上, 是因为大量使用了unix系统命令, 比如:</p>
-<pre><code>import os
-os.popen('mkdir app')
-os.system('touch app.py')
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="s1">&#39;mkdir app&#39;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;touch app.py&#39;</span><span class="p">)</span>
+</pre></div>
+
+
 <p>如果我使用python的内置模块,就可以很好的解决兼容性问题, 而且使用内置模块,
 我可以定义函数进行包装, 从而简化代码编写,检查创建条件,
 于是我实现了这两个operator: <br/>
 1. mkdir_p:</p>
-<pre><code>import os, errno
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">errno</span>
 
-def _mkdir_p(abspath):
-    """
-    Usage:
-        create the abspath
-        except the abspath exist
-    Param:
-        abspath: the absolutly path you want to be created
-    """
-    try:
-        os.makedirs(abspath)
-    except OSError as e:
-        if (e.errno == errno.EEXIST) and (os.path.isdir(abspath)):
-            pass
-        else: raise
-</code></pre>
+<span class="k">def</span> <span class="nf">_mkdir_p</span><span class="p">(</span><span class="n">abspath</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Usage:</span>
+<span class="sd">        create the abspath</span>
+<span class="sd">        except the abspath exist</span>
+<span class="sd">    Param:</span>
+<span class="sd">        abspath: the absolutly path you want to be created</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">abspath</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">EEXIST</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">abspath</span><span class="p">)):</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span> <span class="k">raise</span>
+</pre></div>
+
+
 <p>这个operator使用了python内置函数<code>os.makedirs</code>,
 外层的封装可以确保即使abspath存在也会创建(覆盖)目录,
 这样可以把目录创建过程中的检查转移到专门的log函数中, 避免重复检查. <br/>
 2. init_code</p>
-<pre><code>def init_code(filename, init_code):
-    """create and write init code in a file"""
-    with open(filename, 'w+') as f:
+<div class="codehilite"><pre><span></span>def init_code(filename, init_code):
+    &quot;&quot;&quot;create and write init code in a file&quot;&quot;&quot;
+    with open(filename, &#39;w+&#39;) as f:
         f.write(init_code)
-</code></pre>
+</pre></div>
+
+
 <p>这个operator使用了python上下文管理器以及文件操作用于创建文件,
 同时封装的这层<code>init_code</code>函数可以在创建文件后自动写入初始代码,
 搭配上下文管理器的自动检查关闭, perfect ! <br/>
@@ -115,14 +121,16 @@ app, 甚至可以在wsgi层构建flask app与其他python app交互,
 我则是把一个flask应用拆解模块化,写成了命令的形式,构建速度很快...</p>
 <h1>logger的使用</h1>
 <p>在写mana的时候，我还用到了<code>python loggeer</code></p>
-<pre><code># logging
-import logging
-from logging import StreamHandler, DEBUG
-# logger
-logger = logging.getLogger(__name__)
-logger.setLevel(DEBUG)
-logger.addHandler(StreamHandler())
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="c1"># logging</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">logging</span> <span class="kn">import</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">DEBUG</span>
+<span class="c1"># logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">StreamHandler</span><span class="p">())</span>
+</pre></div>
+
+
 <p>使用logger可以很方便的控制输出等级[info], [warning], 再加上特殊字符
 <code>\033[32m%s\033[0m\n</code></p>
 <p><img alt="log" src="http://7xj431.com1.z0.glb.clouddn.com/log" /> 效果超赞!</p>

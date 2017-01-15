@@ -1,0 +1,145 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>全局描述符表</title>
+    </head>
+    <body>
+        <p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20255189/9c9f5d04-aa75-11e6-8a3f-195e43367161.jpg" /></p>
+<h1>全局描述符表</h1>
+<p>全局描述符表是CPU保护模式下的一个特殊的数据结构. 存放于内存中,
+用于保存相关内存段的信息, 包括该内存段的起始地址、边界界限、特权级等. <br/>
+那么为什么需要全局描述符表呢? </p>
+<h2>先说说x86CPU的实模式和保护模式</h2>
+<p>x86系列的CPU是非常重要的, 很多CPU新的设计模式都起源于x86系列的CPU,
+这篇博客重点关注<strong>8086, 80286, 80386</strong>3种CPU <br/></p>
+<p><strong>8086CPU</strong></p>
+<ul>
+<li>8086CPU运行的模式现在被称为实模式</li>
+<li>采用<strong>段基址+段内偏移地址</strong>的方式寻址</li>
+<li>寄存器(段寄存器)16位, 操作数大小16位, 地址总线20位(0~19), 最多寻址1MB内存</li>
+<li>为了弥补CPU寄存器的位数缺陷, 段基址需要左移4位+段内偏移地址, 超出的地址回卷</li>
+</ul>
+<p>8086CPU<strong>段基址+段内偏移地址</strong>所构造出的内存地址直接对应物理内存地址, 用户程序是可以访问内存中的任意地址,很不安全. <br/>
+于是80286CPU开启了保护模式. <br/></p>
+<p><strong>80286</strong></p>
+<ul>
+<li>80286CPU首创保护模式</li>
+<li>寄存器大小依然是16位, 操作数大小16位, 地址总线扩展到24位, 最多寻址16MB内存</li>
+<li>段寄存器中不再存放段基址, 而是存放索引内存中描述符表的选择子</li>
+<li>既兼容了8086CPU的实模式, 又修正了CPU之前一些设计上缺陷, 比如段基址左移.</li>
+</ul>
+<p>不过80286CPU是过渡性质的, 比如操作数还是16位, 而且24位的地址总线有点奇怪... 于是80386又做了改进</p>
+<p><strong>80386</strong></p>
+<ul>
+<li>80386CPU寄存器扩展为32位(段寄存器还是16因为选择子大小是16位够用了)</li>
+<li>80386CPU地址总线扩展到32位</li>
+<li>操作数大小为32位, 且兼容16位实模式</li>
+</ul>
+<p>至此, 80386CPU主要有2种模式: 16位实模式和32位保护模式, 2种模式间可以相互切换.
+比如mbr在加载loader之前是运行在实模式下的, kernel loader则开启保护模式, 加载内核.</p>
+<h2>全局描述符表的组成</h2>
+<p>全局描述符表是一张表, 每个表项被称为段描述符, 用来描述一个内存段的信息.</p>
+<h2>段描述符的结构</h2>
+<p>一个段描述符大小是8字节64位, 这里为了方便描述, 人为的将其分割为低32位和高32位
+<br/></p>
+<p>| 低32位 | 低32位 | 高32位 | 高32位 |
+| ---- | ----- | ---- | ----|
+| 0~15 | 段界限0~15 | 0~7 | 段基址16~23 |
+| 16~31| 段基址0~15 | 8~11| TYPE(和S字段配合确定段描述符的具体类型) |
+| --- | ---- | 12 | S(为0表示系统段, 为1表示数据段) |
+| --- | ---- | 13~14 | DPL(描述符特权级, 所代表内存段的特权级) |
+| --- | ---- | 15 | P(段是否存在于内存, 1存在0不存在)
+| --- | ---- | 16~19 | 段界限的16~19位 |
+| --- | ---- | 20 | AVL(操作系统可以随意使用此位) |
+| --- | ---- | 21 | L(为1表示64位代码段, 为0表示32位代码段) |
+| --- | ---- | 22 | D/B字段 |
+| --- | ---- | 23 | G(段界限粒度:0~1字节, 1~4KB) |
+| --- | ---- | 24~31 | 段基址的24~31位 |</p>
+<p>保护模式地址总线是32位, 所以段基址为32位
+<hr/>
+段界限表示段边界的扩展最值. 扩展方向只有上下2种. <br/>
+对于数据段和代码段, 段的扩展方向是向上, 即地址越来越高, 此时段界限用来表示段内偏移的最大值<br/>
+对于栈段, 段的扩展方向是向下, 即地址越来越低, 此时段界限用来表示段内偏移的最小值<br/>
+段界限用20个2进制位表示. 段界限是单位量, 大小由描述符中的G位指定, 要么是字节、要么是4KB.<br/>
+故段的大小要么是2的20次方=1MB, 要么是2的20次方乘以4KB=4GB <br/>
+描述符中段界限是从0算起的, <strong>实际段的边界值=(描述符中段界限+1)x(段界限的粒度大小:4KB或者1)-1</strong><br/>
+如果G位为0, 段界限粒度大小为1字节, 实际段边界值=描述符中段界限<br/>
+如果G位为1, 段界限粒度大小为4KB, 如果是平坦模型: 实际段的边界值=0x100000(20位寻址空间)x0x1000(12位4KB)-1=0xFFFFFFFF<br/>
+段界限就是用来限定段内偏移地址的大小的, 防止地址越界.
+<hr/>
+CPU眼中的段描述符分为2大类: 系统段和数据段. 系统段就是硬件需要用到的比如各种门结构. 数据段就是软件需要用的(操作系统也是软件), 代码段也属于数据段分类.<br/>
+<hr/>
+D/B字段分别指定代码段和栈段内偏移地址和操作数的大小. <br/>
+对于代码段, 此位为D, 若D为0, 则表示兼容286CPU的16位操作数, 段内偏移地址使用IP寄存器; 若D为1则使用EIP寄存器 <br/>
+对于栈段, 此位为B. 若B为0, 使用SP寄存器, 栈的起始地址范围为0~0xFFFF; 若D为1使用ESP寄存器, 起始地址范围0~0xFFFFFFFF<br/>
+<hr/></p>
+<h2>GDT与LDT和选择子</h2>
+<p>段描述符是用来定义个内存段的.<br/>
+代码段需要一个段描述符、数据段、栈段. 这些段描述符就是放在GDT中的, GDT中的段描述符是可以共用的. <br/>
+48位GDTR寄存器专门用来存储GDT的内存地址及大小.</p>
+<div class="codehilite"><pre><span></span>0---------15----------------47
+  GDT界限    GDT内存起始地址
+------------------------------
+</pre></div>
+
+
+<p>gdtr寄存器的初始化(加载GDT)有专门的指令: lgdt <br/>
+lgdt指令可以运行在实模式和保护模式下, 指令格式:</p>
+<div class="codehilite"><pre><span></span>lgdt 48位内存数据
+</pre></div>
+
+
+<p>LDT是局部段描述符表. <br/>
+现在可以通过gdtr寄存器找到gdt了, 那么如何找到gdt中的段描述符呢? 这时就需要<strong>选择子selector</strong>了!<br/></p>
+<div class="codehilite"><pre><span></span>0----------------------2-----------------------------3-------------15
+ RPL(请求特权级0,1,3,4) TI(指示选择子是索引GDT还是LDT) 描述符索引值
+---------------------------------------------------------------------
+</pre></div>
+
+
+<p>选择子放在段寄存器中, 同样是16位.</p>
+<h2>汇编代码实例:</h2>
+<p><strong>1.构造全局描述符表</strong> <br/>
+配置信息: <br/></p>
+<ul>
+<li><a href="https://github.com/UiharuOS/uiharu/blob/master/src/boot/include/boot.inc#L1">uiharuOS boot.inc</a></li>
+</ul>
+<p>构造gdt及其内部描述符: <br/></p>
+<ul>
+<li><a href="https://github.com/UiharuOS/uiharu/blob/master/src/boot/loader.S#L6">uiharuOS loader.S</a></li>
+</ul>
+<p><strong>2.进入保护模式</strong> <br/></p>
+<ul>
+<li><a href="https://github.com/UiharuOS/uiharu/blob/master/src/boot/loader.S#L39">uiharuOS loader.S</a></li>
+</ul>
+<h2>还是惯例的~总结</h2>
+<p>呼...先舒一口气... <br/>
+gdt通过复杂的描述符可以很好的定义一个代码段, 这样CPU就可以检测每个位, 判定这个代码段是否可以被相应程序访问, 以及是否出错. 比起8086实模式指哪打哪不知道高到哪里去了.... <br/>
+有人会问, gdt在内存中, 访问内存相比于CPU的速度可是很慢的. 嗯, 所以有了SRAM缓存, CPU会把常用的描述符放到缓存中, 这样就不用每次都去内存gdt中读取了! <br/>
+终于, bootloader要告一段落了:) 内核, 我来啦!!!!!<br/></p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

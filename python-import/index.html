@@ -13,18 +13,20 @@
 <p>本文主要讨论关于Python中import的机制与实现、以及介绍一些有意思的Python Hooks。</p>
 <h3>Python 类库引入机制</h3>
 <p>首先，看一个简单的例子：</p>
-<pre><code>"""
-目录结构如下：
-├── __init__.py
-├── main.py
-└── string.py
-"""
-# main.py 内容如下
-import string
-print string.a
-# string.py 内容如下
-a = 2
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">目录结构如下：</span>
+<span class="sd">├── __init__.py</span>
+<span class="sd">├── main.py</span>
+<span class="sd">└── string.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># main.py 内容如下</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="k">print</span> <span class="n">string</span><span class="o">.</span><span class="n">a</span>
+<span class="c1"># string.py 内容如下</span>
+<span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+</pre></div>
+
+
 <p>现在，考虑一下：</p>
 <ol>
 <li>当我们执行main.py的时候，会发生什么事情？</li>
@@ -40,70 +42,82 @@ a = 2
 </ol>
 <h3>relative import</h3>
 <p>relative import 也叫作相对引入，在Python2.5及之前是默认的引入方法。它的使用方法如下：</p>
-<pre><code>from .string import a
-from ..string import a
-from ...string import a
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">.string</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="kn">from</span> <span class="nn">..string</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="kn">from</span> <span class="nn">...string</span> <span class="kn">import</span> <span class="n">a</span>
+</pre></div>
+
+
 <p>这种引入方式使用一个点号来标识引入类库的精确位置。与linux的相对路径表示相似，一个点表示当前目录，每多一个点号则代表向上一层目录。</p>
-<pre><code>"""
-├── __init__.py
-├── foo.py
-└── main.py
-"""
-# foo.py
-a = 2
-# main.py
-print __name__
-from .foo import a
-print a
-```
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">├── __init__.py</span>
+<span class="sd">├── foo.py</span>
+<span class="sd">└── main.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># foo.py</span>
+<span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="c1"># main.py</span>
+<span class="k">print</span> <span class="n">__name__</span>
+<span class="kn">from</span> <span class="nn">.foo</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="k">print</span> <span class="n">a</span>
+<span class="sb">``</span><span class="err">`</span>
+</pre></div>
+
+
 <p>相对引入，那么我们需要知道相对什么来引入。相对引入使用被引入文件的<code>__name__</code>属性来决定该文件在整个包结构的位置。那么如果文件的<code>__name__</code>没有包含任何包的信息，例如<code>__name__</code>被设置为了<code>__main__</code>，则认为其为‘top level script'，而不管该文件的位置，这个时候相对引入就没有引入的参考物。如上面的程序所示，当我们执行<code>python main.py</code>时，Python解释器会抛出 ValueError: Attempted relative import in non-package的异常。</p>
 <p>为了解决这个问题，<a href="https://www.python.org/dev/peps/pep-0366/">PEP 0366 -- Main module explicit relative imports</a>提出了一个解决方案。允许用户使用<code>python -m ex2.main</code>的方式,来执行该文件。在这个方案下，引入了一个新的属性<code>__package__</code>。</p>
-<pre><code>╭─liuchang@localhost  ~/Codes/pycon
-╰─$ cat ex2/main.py
-print __name__
-print __package__
-from .foo import a
-print a
-╭─liuchang@localhost  ~/Codes/pycon
-╰─$ python -m ex2.main
-__main__
-ex2
-2
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@localhost</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
+<span class="err">╰─$</span> <span class="n">cat</span> <span class="n">ex2</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
+<span class="k">print</span> <span class="n">__name__</span>
+<span class="k">print</span> <span class="n">__package__</span>
+<span class="kn">from</span> <span class="nn">.foo</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="k">print</span> <span class="n">a</span>
+<span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@localhost</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
+<span class="err">╰─$</span> <span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">ex2</span><span class="o">.</span><span class="n">main</span>
+<span class="n">__main__</span>
+<span class="n">ex2</span>
+<span class="mi">2</span>
+</pre></div>
+
+
 <h3>absolute import</h3>
 <p>absolute import 也叫作完全引入，非常类似于Java的引入进制，在Python2.5被完全实现，但是是需要通过<code>from __future__ import absolute_import</code>来打开该引入进制。在Python2.6之后以及Python3，完全引用成为Python的默认的引入机制。它的使用方法如下：</p>
-<pre><code>from pkg import foo
-from pkg.moduleA import foo
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">pkg</span> <span class="kn">import</span> <span class="n">foo</span>
+<span class="kn">from</span> <span class="nn">pkg.moduleA</span> <span class="kn">import</span> <span class="n">foo</span>
+</pre></div>
+
+
 <p>要注意的是，需要从包目录最顶层目录依次写下，而不能从中间开始。</p>
 <p>在使用该引入方式时，我们碰到比较多的问题就是因为位置原因，Python找不到相应的库文件，抛出ImportError的异常。让我们看一个完全引用的例子:</p>
-<pre><code>  """
-  ex3
-├── __init__.py
-├── foo.py
-└── main.py
-"""
-# foo.py
-a = 2
+<div class="codehilite"><pre><span></span>  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  ex3</span>
+<span class="sd">├── __init__.py</span>
+<span class="sd">├── foo.py</span>
+<span class="sd">└── main.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># foo.py</span>
+<span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
 
-# main.py
-print __name__
-print __package__
-from ex3.foo import a
-print a
-</code></pre>
+<span class="c1"># main.py</span>
+<span class="k">print</span> <span class="n">__name__</span>
+<span class="k">print</span> <span class="n">__package__</span>
+<span class="kn">from</span> <span class="nn">ex3.foo</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="k">print</span> <span class="n">a</span>
+</pre></div>
+
+
 <p>我们尝试着去运行main.py文件，Python解释器会抛出ImportError。那么我们如何解决这个问题呢？</p>
-<pre><code>╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon
-╰─$ python ex3/main.py
-__main__
-None
-Traceback (most recent call last):
-  File "ex3/main.py", line 3, in &lt;module&gt;
-    from ex3.foo import a
-ImportError: No module named ex3.foo
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
+<span class="err">╰─$</span> <span class="n">python</span> <span class="n">ex3</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
+<span class="n">__main__</span>
+<span class="bp">None</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+  <span class="n">File</span> <span class="s2">&quot;ex3/main.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">3</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+    <span class="kn">from</span> <span class="nn">ex3.foo</span> <span class="kn">import</span> <span class="n">a</span>
+<span class="ne">ImportError</span><span class="p">:</span> <span class="n">No</span> <span class="n">module</span> <span class="n">named</span> <span class="n">ex3</span><span class="o">.</span><span class="n">foo</span>
+</pre></div>
+
+
 <p>首先，我们也可以使用前文所述的module的方式去运行程序，通过-m参数来告诉解释器<code>__package__</code>属性。如下：</p>
 <p>╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon
    ╰─$ python -m ex3.main
@@ -111,25 +125,29 @@ ImportError: No module named ex3.foo
      ex3
      2
      另外，我们还有一个办法可以解决该问题，在描述之前，我们介绍一个关于Python的非常有用的小知识：<strong>Python解释器会自动将当前工作目录添加到sys.path</strong>。如下所示，可以看到我们打印出的<code>sys.path</code>已经包含了当前工作目录。A</p>
-<pre><code>╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon/ex4
-╰─$ cat main.py
-import sys
-print sys.path
-╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon/ex4
-╰─$ python main.py
-['/Users/liuchang/Codes/pycon/ex4', '/Library/Python/2.7/site-packages/pip-7.1.0-py2.7.egg', '/Library/Python/2.7/site-packages/mesos-_PACKAGE_VERSION_-py2.7.egg', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python27.zip', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-darwin', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac/lib-scriptpackages', '/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-tk', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-old', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload', '/Users/liuchang/Library/Python/2.7/lib/python/site-packages', '/usr/local/lib/python2.7/site-packages', '/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC', '/Library/Python/2.7/site-packages']
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span><span class="o">/</span><span class="n">ex4</span>
+<span class="err">╰─$</span> <span class="n">cat</span> <span class="n">main</span><span class="o">.</span><span class="n">py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span>
+<span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span><span class="o">/</span><span class="n">ex4</span>
+<span class="err">╰─$</span> <span class="n">python</span> <span class="n">main</span><span class="o">.</span><span class="n">py</span>
+<span class="p">[</span><span class="s1">&#39;/Users/liuchang/Codes/pycon/ex4&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages/pip-7.1.0-py2.7.egg&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages/mesos-_PACKAGE_VERSION_-py2.7.egg&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python27.zip&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-darwin&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac/lib-scriptpackages&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-tk&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-old&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload&#39;</span><span class="p">,</span> <span class="s1">&#39;/Users/liuchang/Library/Python/2.7/lib/python/site-packages&#39;</span><span class="p">,</span> <span class="s1">&#39;/usr/local/lib/python2.7/site-packages&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages&#39;</span><span class="p">]</span>
+</pre></div>
+
+
 <p>了解了Python解释器的这个特性后，我们就可以解决完全引用的找不到类库的问题：执行的时候，让解释器自动的将类库的目录添加到sys.path中。</p>
 <p>我们可以在顶层目录中添加一个run_ex3.py的文件，文件内容和运行结果如下，可以看到Python解释器正确的执行了ex3.main文件。</p>
-<pre><code>╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon
-╰─$ cat run_ex3.py
-from ex3 import main
-╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon
-╰─$ python run_ex3.py
-ex3.main
-None
-2
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
+<span class="err">╰─$</span> <span class="n">cat</span> <span class="n">run_ex3</span><span class="o">.</span><span class="n">py</span>
+<span class="kn">from</span> <span class="nn">ex3</span> <span class="kn">import</span> <span class="n">main</span>
+<span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
+<span class="err">╰─$</span> <span class="n">python</span> <span class="n">run_ex3</span><span class="o">.</span><span class="n">py</span>
+<span class="n">ex3</span><span class="o">.</span><span class="n">main</span>
+<span class="bp">None</span>
+<span class="mi">2</span>
+</pre></div>
+
+
 <h1>一些实践经验</h1>
 <h2>相对引用还是绝对引用？</h2>
 <p>上面介绍了Python的两种引用方式，都可以解决引入歧义的问题。那我们应该使用哪一种呢？</p>
@@ -139,16 +157,20 @@ None
 <blockquote>
 <p>Absolute imports are recommended, as they are usually more readable and tend to be better behaved (or at least give better error messages) if the import system is incorrectly configured (such as when a directory inside a package ends up on sys.path ):</p>
 </blockquote>
-<pre><code>import mypkg.sibling
-from mypkg import sibling
-from mypkg.sibling import example
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">mypkg.sibling</span>
+<span class="kn">from</span> <span class="nn">mypkg</span> <span class="kn">import</span> <span class="n">sibling</span>
+<span class="kn">from</span> <span class="nn">mypkg.sibling</span> <span class="kn">import</span> <span class="n">example</span>
+</pre></div>
+
+
 <blockquote>
 <p>However, explicit relative imports are an acceptable alternative to absolute imports, especially when dealing with complex package layouts where using absolute imports would be unnecessarily verbose:</p>
 </blockquote>
-<pre><code>from . import sibling
-from .sibling import example
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">sibling</span>
+<span class="kn">from</span> <span class="nn">.sibling</span> <span class="kn">import</span> <span class="n">example</span>
+</pre></div>
+
+
 <blockquote>
 <p>Standard library code should avoid complex package layouts and always use absolute imports.
 Implicit relative imports should never be used and have been removed in Python 3.</p>
@@ -157,8 +179,10 @@ Implicit relative imports should never be used and have been removed in Python 3
 <p>为了别人使用自己代码的方便，应该尽量使用规范的包分发机制。为自己的Python包编写正确的setup.py文件，添加相应的README.md文件。对于提供一些可执行命令的包，则可以使用 console_entrypoint 的机制来提供。因为打包和分发不是本文重点，不再详细叙述，大家可以查看官方文档。</p>
 <h4>使用virtualenv管理包依赖</h4>
 <p>在使用Python的时候，尽量使用virtualenv来管理项目，所有的项目都运行在特定的virtualenv中。并且为自己的项目生成正确的依赖描述文件。</p>
-<pre><code>pip freeze &gt; requirements.txt
-</code></pre>
+<div class="codehilite"><pre><span></span>pip freeze &gt; requirements.txt
+</pre></div>
+
+
 <p>关于virtualenv的用法，可以参考我之前的一篇文章<a href="http://lcblog-wordpress.stor.sinaapp.com/uploads/2015/10/virtualenv教程.pdf">virtualenv教程</a>。</p>
 <h3>Python import实现</h3>
 <p>Python 提供了 import 语句来实现类库的引用，下面我们详细介绍当执行了 import 语句的时候，内部究竟做了些什么事情。</p>
@@ -179,15 +203,17 @@ Implicit relative imports should never be used and have been removed in Python 3
 <h5>sys.modules</h5>
 <p>对于第一步中sys.modules，我们可以打开Python来实际的查看一下其内容：</p>
 <blockquote></blockquote>
-<pre><code>Python 2.7.10 (default, Aug 22 2015, 20:33:39)
-[GCC 4.2.1 Compatible Apple LLVM 7.0.0 (clang-700.0.59.1)] on darwin
-Type "help", "copyright", "credits" or "license" for more information.
-&gt;&gt;&gt; import sys
-&gt;&gt;&gt; sys.modules
-{'copy_reg': &lt;module 'copy_reg' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/copy_reg.pyc'&gt;, 'sre_compile': &lt;module 'sre_compile' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_compile.pyc'&gt;, '_sre': &lt;module '_sre' (built-in)&gt;, 'encodings': &lt;module 'encodings' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/__init__.pyc'&gt;, 'site': &lt;module 'site' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site.pyc'&gt;, '__builtin__': &lt;module '__builtin__' (built-in)&gt;, 'sysconfig': &lt;module 'sysconfig' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sysconfig.pyc'&gt;, 'encodings.encodings': None, '__main__': &lt;module '__main__' (built-in)&gt;, 'supervisor': &lt;module 'supervisor' (built-in)&gt;, 'abc': &lt;module 'abc' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/abc.pyc'&gt;, 'posixpath': &lt;module 'posixpath' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/posixpath.pyc'&gt;, '_weakrefset': &lt;module '_weakrefset' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_weakrefset.pyc'&gt;, 'errno': &lt;module 'errno' (built-in)&gt;, 'encodings.codecs': None, 'sre_constants': &lt;module 'sre_constants' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_constants.pyc'&gt;, 're': &lt;module 're' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/re.pyc'&gt;, '_abcoll': &lt;module '_abcoll' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_abcoll.pyc'&gt;, 'types': &lt;module 'types' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/types.pyc'&gt;, '_codecs': &lt;module '_codecs' (built-in)&gt;, 'encodings.__builtin__': None, '_warnings': &lt;module '_warnings' (built-in)&gt;, 'genericpath': &lt;module 'genericpath' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/genericpath.pyc'&gt;, 'stat': &lt;module 'stat' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/stat.pyc'&gt;, 'zipimport': &lt;module 'zipimport' (built-in)&gt;, '_sysconfigdata': &lt;module '_sysconfigdata' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_sysconfigdata.pyc'&gt;, 'mpl_toolkits': &lt;module 'mpl_toolkits' (built-in)&gt;, 'warnings': &lt;module 'warnings' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/warnings.pyc'&gt;, 'UserDict': &lt;module 'UserDict' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/UserDict.pyc'&gt;, 'encodings.utf_8': &lt;module 'encodings.utf_8' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/utf_8.pyc'&gt;, 'sys': &lt;module 'sys' (built-in)&gt;, '_osx_support': &lt;module '_osx_support' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_osx_support.pyc'&gt;, 'codecs': &lt;module 'codecs' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/codecs.pyc'&gt;, 'readline': &lt;module 'readline' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/readline.so'&gt;, 'os.path': &lt;module 'posixpath' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/posixpath.pyc'&gt;, '_locale': &lt;module '_locale' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_locale.so'&gt;, 'signal': &lt;module 'signal' (built-in)&gt;, 'traceback': &lt;module 'traceback' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/traceback.pyc'&gt;, 'linecache': &lt;module 'linecache' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/linecache.pyc'&gt;, 'posix': &lt;module 'posix' (built-in)&gt;, 'encodings.aliases': &lt;module 'encodings.aliases' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/aliases.pyc'&gt;, 'exceptions': &lt;module 'exceptions' (built-in)&gt;, 'sre_parse': &lt;module 'sre_parse' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_parse.pyc'&gt;, 'os': &lt;module 'os' from '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/os.pyc'&gt;, '_weakref': &lt;module '_weakref' (built-in)&gt;}
-&gt;&gt;&gt; sys.modules['zlib'].__file__
-'/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/zlib.so'
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="n">Python</span> <span class="mf">2.7</span><span class="o">.</span><span class="mi">10</span> <span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="n">Aug</span> <span class="mi">22</span> <span class="mi">2015</span><span class="p">,</span> <span class="mi">20</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">39</span><span class="p">)</span>
+<span class="p">[</span><span class="n">GCC</span> <span class="mf">4.2</span><span class="o">.</span><span class="mi">1</span> <span class="n">Compatible</span> <span class="n">Apple</span> <span class="n">LLVM</span> <span class="mf">7.0</span><span class="o">.</span><span class="mi">0</span> <span class="p">(</span><span class="n">clang</span><span class="o">-</span><span class="mf">700.0</span><span class="o">.</span><span class="mf">59.1</span><span class="p">)]</span> <span class="n">on</span> <span class="n">darwin</span>
+<span class="n">Type</span> <span class="s2">&quot;help&quot;</span><span class="p">,</span> <span class="s2">&quot;copyright&quot;</span><span class="p">,</span> <span class="s2">&quot;credits&quot;</span> <span class="ow">or</span> <span class="s2">&quot;license&quot;</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span><span class="o">.</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sys</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span>
+<span class="p">{</span><span class="s1">&#39;copy_reg&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;copy_reg&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/copy_reg.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;sre_compile&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;sre_compile&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_compile.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_sre&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_sre&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;encodings&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/__init__.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;site&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;site&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;__builtin__&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;__builtin__&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;sysconfig&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;sysconfig&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sysconfig.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings.encodings&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;__main__&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;supervisor&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;supervisor&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;abc&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;abc&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/abc.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;posixpath&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;posixpath&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/posixpath.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_weakrefset&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_weakrefset&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_weakrefset.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;errno&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;errno&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings.codecs&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;sre_constants&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;sre_constants&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_constants.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;re&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;re&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/re.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_abcoll&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_abcoll&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_abcoll.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;types&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;types&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/types.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_codecs&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_codecs&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings.__builtin__&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;_warnings&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_warnings&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;genericpath&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;genericpath&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/genericpath.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;stat&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/stat.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;zipimport&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;zipimport&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_sysconfigdata&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_sysconfigdata&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_sysconfigdata.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;mpl_toolkits&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;mpl_toolkits&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;warnings&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;warnings&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/warnings.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;UserDict&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;UserDict&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/UserDict.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings.utf_8&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;encodings.utf_8&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/utf_8.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;sys&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;sys&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_osx_support&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_osx_support&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/_osx_support.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;codecs&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;codecs&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/codecs.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;readline&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;readline&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/readline.so&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;os.path&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;posixpath&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/posixpath.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_locale&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_locale&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_locale.so&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;signal&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;signal&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;traceback&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;traceback&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/traceback.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;linecache&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;linecache&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/linecache.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;posix&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;posix&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;encodings.aliases&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;encodings.aliases&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/encodings/aliases.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;exceptions&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;exceptions&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;sre_parse&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;sre_parse&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/sre_parse.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;os&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;os&#39;</span> <span class="kn">from</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/os.pyc&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;_weakref&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">module</span> <span class="s1">&#39;_weakref&#39;</span> <span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span><span class="p">)</span><span class="o">&gt;</span><span class="p">}</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;zlib&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">__file__</span>
+<span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/zlib.so&#39;</span>
+</pre></div>
+
+
 <blockquote></blockquote>
 <p>可以看到sys.modules已经保存了一些包的信息，由这些信息，我们就可以直接知道要查找的包的位置等信息。</p>
 <h5>finder、loader和importer</h5>
@@ -199,26 +225,30 @@ Type "help", "copyright", "credits" or "license" for more information.
 </ul>
 <h5>sys.meta_path</h5>
 <p>在Python查找的时候，如果在sys.modules没有查找到，就会依次调用sys.meta_path中的finder对象。默认的情况下，sys.meta_path是一个空列表，并没有任何finder对象。</p>
-<pre><code>In [6]: sys.meta_path
+<div class="codehilite"><pre><span></span>In [6]: sys.meta_path
 Out[6]: []
-</code></pre>
+</pre></div>
+
+
 <p>我们可以向sys.meta_path中添加一些定义的finder，来实现对Python加载模块的修改。比如下例，我们实现了一个会将每次加载包的信息打印出来的finder。</p>
-<pre><code>from __future__ import print_function
-import sys
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 
-class Watcher(object):
-    @classmethod
-    def find_module(cls, name, path, target=None):
-        print("Importing", name, path, target)
-        return None
+<span class="k">class</span> <span class="nc">Watcher</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">find_module</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Importing&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
 
-sys.meta_path.insert(0, Watcher)
+<span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">Watcher</span><span class="p">)</span>
 
-import socket
-</code></pre>
+<span class="kn">import</span> <span class="nn">socket</span>
+</pre></div>
+
+
 <p>当我们执行的时候，就可以看到系统加载socket包时所发生的事情。</p>
 <blockquote></blockquote>
-<pre><code>╭─liuchang@localhost  ~/Codes/pycon/ex5_meta_path
+<div class="codehilite"><pre><span></span>╭─liuchang@localhost  ~/Codes/pycon/ex5_meta_path
 ╰─$ python finder1.py
 Importing socket None None
 Importing _socket None None
@@ -226,7 +256,9 @@ Importing functools None None
 Importing _functools None None
 Importing _ssl None None
 Importing cStringIO None None
-</code></pre>
+</pre></div>
+
+
 <blockquote></blockquote>
 <h5>sys.path hook</h5>
 <p>Python import的hook分为二类，一类是上一章节已经描述的meta hook，另一类是 path hook。</p>
@@ -236,52 +268,56 @@ Importing cStringIO None None
 <h1>python import hooks</h1>
 <p>在介绍完Python的引用机制与一些实现方法后，接下来我们介绍一些关于如何根据自己的需求来扩展Python的引用机制。</p>
 <p>在开始详细介绍前，给大家展示一个实用性不高，但是很有意思的例子：<strong>让Python在执行代码的时候自动安装缺失的类库</strong>。我们会实现一个autoinstall的模块，只要import了该模块，就可以打开该功能。如下所示，我们尝试引入tornado库的时候，iPython会提示我们没有安装。然后，我们引入了autoinstall，再尝试引入tornado，iPython就会自动的安装tornado库。</p>
-<pre><code>In [1]: import tornado
----------------------------------------------------------------------------
-ImportError                               Traceback (most recent call last)
-&lt;ipython-input-1-3eac10687b7e&gt; in &lt;module&gt;()
-----&gt; 1 import tornado
+<div class="codehilite"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">tornado</span>
+<span class="o">---------------------------------------------------------------------------</span>
+<span class="ne">ImportError</span>                               <span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="n">ipython</span><span class="o">-</span><span class="nb">input</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="mi">3</span><span class="n">eac10687b7e</span><span class="o">&gt;</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="o">----&gt;</span> <span class="mi">1</span> <span class="kn">import</span> <span class="nn">tornado</span>
 
-ImportError: No module named tornado
+<span class="ne">ImportError</span><span class="p">:</span> <span class="n">No</span> <span class="n">module</span> <span class="n">named</span> <span class="n">tornado</span>
 
-In [2]: import autoinstall
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">autoinstall</span>
 
-In [3]: import tornado
-Installing tornado
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">tornado</span>
+<span class="n">Installing</span> <span class="n">tornado</span>
 
-Collecting tornado
-  Downloading tornado-4.2.1.tar.gz (434kB)
-Collecting backports.ssl-match-hostname (from tornado)
-  Downloading http://182.92.2.186:7002/packages/backports.ssl_match_hostname-3.4.0.2-py2-none-any.whl
-Collecting certifi (from tornado)
-  Downloading certifi-2015.9.6.2-py2.py3-none-any.whl (371kB)
-Installing collected packages: backports.ssl-match-hostname, certifi, tornado
-  Running setup.py install for tornado
-Successfully installed backports.ssl-match-hostname-3.4.0.2 certifi-2015.9.6.2 tornado-4.2.1
-</code></pre>
+<span class="n">Collecting</span> <span class="n">tornado</span>
+  <span class="n">Downloading</span> <span class="n">tornado</span><span class="o">-</span><span class="mf">4.2</span><span class="o">.</span><span class="mf">1.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span> <span class="p">(</span><span class="mi">434</span><span class="n">kB</span><span class="p">)</span>
+<span class="n">Collecting</span> <span class="n">backports</span><span class="o">.</span><span class="n">ssl</span><span class="o">-</span><span class="n">match</span><span class="o">-</span><span class="n">hostname</span> <span class="p">(</span><span class="kn">from</span> <span class="nn">tornado</span><span class="p">)</span>
+  <span class="n">Downloading</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">182.92</span><span class="o">.</span><span class="mf">2.186</span><span class="p">:</span><span class="mi">7002</span><span class="o">/</span><span class="n">packages</span><span class="o">/</span><span class="n">backports</span><span class="o">.</span><span class="n">ssl_match_hostname</span><span class="o">-</span><span class="mf">3.4</span><span class="o">.</span><span class="mf">0.2</span><span class="o">-</span><span class="n">py2</span><span class="o">-</span><span class="n">none</span><span class="o">-</span><span class="nb">any</span><span class="o">.</span><span class="n">whl</span>
+<span class="n">Collecting</span> <span class="n">certifi</span> <span class="p">(</span><span class="kn">from</span> <span class="nn">tornado</span><span class="p">)</span>
+  <span class="n">Downloading</span> <span class="n">certifi</span><span class="o">-</span><span class="mf">2015.9</span><span class="o">.</span><span class="mf">6.2</span><span class="o">-</span><span class="n">py2</span><span class="o">.</span><span class="n">py3</span><span class="o">-</span><span class="n">none</span><span class="o">-</span><span class="nb">any</span><span class="o">.</span><span class="n">whl</span> <span class="p">(</span><span class="mi">371</span><span class="n">kB</span><span class="p">)</span>
+<span class="n">Installing</span> <span class="n">collected</span> <span class="n">packages</span><span class="p">:</span> <span class="n">backports</span><span class="o">.</span><span class="n">ssl</span><span class="o">-</span><span class="n">match</span><span class="o">-</span><span class="n">hostname</span><span class="p">,</span> <span class="n">certifi</span><span class="p">,</span> <span class="n">tornado</span>
+  <span class="n">Running</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span> <span class="k">for</span> <span class="n">tornado</span>
+<span class="n">Successfully</span> <span class="n">installed</span> <span class="n">backports</span><span class="o">.</span><span class="n">ssl</span><span class="o">-</span><span class="n">match</span><span class="o">-</span><span class="n">hostname</span><span class="o">-</span><span class="mf">3.4</span><span class="o">.</span><span class="mf">0.2</span> <span class="n">certifi</span><span class="o">-</span><span class="mf">2015.9</span><span class="o">.</span><span class="mf">6.2</span> <span class="n">tornado</span><span class="o">-</span><span class="mf">4.2</span><span class="o">.</span><span class="mi">1</span>
+</pre></div>
+
+
 <p>这个功能的实现其实很简单，利用了sys.meta_path。autoinstall的全部代码如下：</p>
-<pre><code>from __future__ import print_function
-import sys
-import subprocess
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
 
 
-class AutoInstall(object):
-    _loaded = set()
+<span class="k">class</span> <span class="nc">AutoInstall</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">_loaded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
-    @classmethod
-    def find_module(cls, name, path, target=None):
-        if path is None and name not in cls._loaded:
-            cls._loaded.add(name)
-            print("Installing", name)
-            try:
-                out = subprocess.check_output(['sudo', sys.executable, '-m', 'pip', 'install', name])
-                print(out)
-            except Exception as e:
-                print("Failed" + e.message)
-        return None
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">find_module</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_loaded</span><span class="p">:</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">_loaded</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Installing&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">([</span><span class="s1">&#39;sudo&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s1">&#39;-m&#39;</span><span class="p">,</span> <span class="s1">&#39;pip&#39;</span><span class="p">,</span> <span class="s1">&#39;install&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">])</span>
+                <span class="k">print</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Failed&quot;</span> <span class="o">+</span> <span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
 
-sys.meta_path.append(AutoInstall)
-</code></pre>
+<span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AutoInstall</span><span class="p">)</span>
+</pre></div>
+
+
 <h2>import hook的重要性</h2>
 <p>我们为什么需要Python import的hook呢？使用import的hook可以让我们做到很多事情，比如说当我们的Python包存储在一个非标准的文件中，或者Python程序存储在网络数据库中，或者像py2exe一样将Python程序打包成了一个文件，我们需要一种方法来正确的解析它们。</p>
 <p>其次，我们希望在Python加载类库的时候，可以额外的做一些事情，比如上传审计信息，比如延迟加载，比如自动解决上例的依赖未安装的问题。</p>
@@ -301,124 +337,141 @@ sys.meta_path.append(AutoInstall)
 <p>使用Import Hook，我们可以达到Lazy Import的效果，当我们执行import的时候，实际上并没引入该库，只有真正的使用这个库的时候，才会将其引入到当前工作空间。
 具体的代码可以参考<a href="https://github.com/noahmorrison/limp">github</a>。
 实现的效果如下：</p>
-<pre><code>#!/usr/bin/python
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="ch">#!/usr/bin/python</span>
 
-import limp  # Lazy imports begin now
+<span class="kn">import</span> <span class="nn">limp</span>  <span class="c1"># Lazy imports begin now</span>
 
-import json
-import sys
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 
-print('json' in sys.modules)  # False
-print(', '.join(json.loads('["Hello", "World!"]')))
-print('json' in sys.modules)  # True
-</code></pre>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;json&#39;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">)</span>  <span class="c1"># False</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="s1">&#39;[&quot;Hello&quot;, &quot;World!&quot;]&#39;</span><span class="p">)))</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;json&#39;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">)</span>  <span class="c1"># True</span>
+</pre></div>
+</td></tr></table>
+
 <p>它的实现也很简单：</p>
-<pre><code>import sys
-import imp
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">imp</span>
 
-_lazy_modules = {}
+<span class="n">_lazy_modules</span> <span class="o">=</span> <span class="p">{}</span>
 
-class LazyModule():
-    def __init__(self, name):
-        self.name = name
+<span class="k">class</span> <span class="nc">LazyModule</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
 
-    def __getattr__(self, attr):
-        # 真正load_module
-        # 是在模块使用(getattr)的时候
-        path = _lazy_modules[self.name]
-        f, pathname, desc = imp.find_module(self.name, path)
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="c1"># 真正load_module</span>
+        <span class="c1"># 是在模块使用(getattr)的时候</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_lazy_modules</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">f</span><span class="p">,</span> <span class="n">pathname</span><span class="p">,</span> <span class="n">desc</span> <span class="o">=</span> <span class="n">imp</span><span class="o">.</span><span class="n">find_module</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
 
-        # 重新加载LazyFinder
-        lf = sys.meta_path.pop()
-        imp.load_module(self.name, f, pathname, desc)
-        sys.meta_path.append(lf)
+        <span class="c1"># 重新加载LazyFinder</span>
+        <span class="n">lf</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">imp</span><span class="o">.</span><span class="n">load_module</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">pathname</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lf</span><span class="p">)</span>
 
 
-        self.__dict__ = sys.modules[self.name].__dict__
-        return self.__dict__[attr]
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">__dict__</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
 
-class LazyFinder(object):
+<span class="k">class</span> <span class="nc">LazyFinder</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
-    def find_module(self, name, path):
-        _lazy_modules[name] = path
-        return self
+    <span class="k">def</span> <span class="nf">find_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">_lazy_modules</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
-    def load_module(self, name):
-        return LazyModule(name)
+    <span class="k">def</span> <span class="nf">load_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">LazyModule</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 
-sys.meta_path.append(LazyFinder())
-</code></pre>
+<span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LazyFinder</span><span class="p">())</span>
+</pre></div>
+
+
 <h3>Flask 插件库统一入口</h3>
 <p>使用过Flask的同学都知道，Flask的对于插件提供了统一的入口。比如说我们安装了Flask_API这个库，然后我们可以直接<code>import flask_api</code>来使用这个库，同时Flask还允许我们采用<code>import flask.ext.api</code>的方式来引用该库。</p>
 <p>这里Flask就是使用了import 的hook，当引入flask.ext的包时，就自动的引用相应的库。Flask实现了一个叫ExtensionImporter的类，这个类实现了find_module和load_module代码实现如下<a href="https://github.com/mitsuhiko/flask/blob/master/flask/exthook.py#L27">github</a>：</p>
-<pre><code>class ExtensionImporter(object):
-    """This importer redirects imports from this submodule to other locations.
-    This makes it possible to transition from the old flaskext.name to the
-    newer flask_name without people having a hard time.
-    """
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">ExtensionImporter</span>(<span class="n">object</span>):
+    <span class="s">&quot;&quot;&quot;This importer redirects imports from this submodule to other locations.</span>
+<span class="s">    This makes it possible to transition from the old flaskext.name to the</span>
+<span class="s">    newer flask_name without people having a hard time.</span>
+<span class="s">    &quot;&quot;&quot;</span>
 
-    def __init__(self, module_choices, wrapper_module):
-        self.module_choices = module_choices
-        self.wrapper_module = wrapper_module
-        self.prefix = wrapper_module + '.'
-        self.prefix_cutoff = wrapper_module.count('.') + 1
+    <span class="n">def</span> <span class="n">__init__</span>(<span class="k">self</span>, <span class="n">module_choices</span>, <span class="n">wrapper_module</span>):
+        <span class="k">self</span>.<span class="n">module_choices</span> = <span class="n">module_choices</span>
+        <span class="k">self</span>.<span class="n">wrapper_module</span> = <span class="n">wrapper_module</span>
+        <span class="k">self</span>.<span class="nb">prefix</span> = <span class="n">wrapper_module</span> + <span class="s">&#39;.&#39;</span>
+        <span class="k">self</span>.<span class="n">prefix_cutoff</span> = <span class="n">wrapper_module</span>.<span class="nb">count</span>(<span class="s">&#39;.&#39;</span>) + <span class="mi">1</span>
 
-    def __eq__(self, other):
-        return self.__class__.__module__ == other.__class__.__module__ and \
-               self.__class__.__name__ == other.__class__.__name__ and \
-               self.wrapper_module == other.wrapper_module and \
-               self.module_choices == other.module_choices
+    <span class="n">def</span> <span class="n">__eq__</span>(<span class="k">self</span>, <span class="n">other</span>):
+        <span class="k">return</span> <span class="k">self</span>.<span class="n">__class__</span>.<span class="n">__module__</span> == <span class="n">other</span>.<span class="n">__class__</span>.<span class="n">__module__</span> <span class="o">and</span> \
+               <span class="k">self</span>.<span class="n">__class__</span>.<span class="n">__name__</span> == <span class="n">other</span>.<span class="n">__class__</span>.<span class="n">__name__</span> <span class="o">and</span> \
+               <span class="k">self</span>.<span class="n">wrapper_module</span> == <span class="n">other</span>.<span class="n">wrapper_module</span> <span class="o">and</span> \
+               <span class="k">self</span>.<span class="n">module_choices</span> == <span class="n">other</span>.<span class="n">module_choices</span>
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    <span class="n">def</span> <span class="n">__ne__</span>(<span class="k">self</span>, <span class="n">other</span>):
+        <span class="k">return</span> <span class="nb">not</span> <span class="k">self</span>.<span class="n">__eq__</span>(<span class="n">other</span>)
 
-    def install(self):
-        sys.meta_path[:] = [x for x in sys.meta_path if self != x] + [self]
+    <span class="n">def</span> <span class="n">install</span>(<span class="k">self</span>):
+        <span class="n">sys</span>.<span class="n">meta_path</span>[:] = [<span class="o">x</span> <span class="k">for</span> <span class="o">x</span> <span class="n">in</span> <span class="n">sys</span>.<span class="n">meta_path</span> <span class="k">if</span> <span class="k">self</span> != <span class="o">x</span>] + [<span class="k">self</span>]
 
-    def find_module(self, fullname, path=None):
-        if fullname.startswith(self.prefix):
-            return self
+    <span class="n">def</span> <span class="n">find_module</span>(<span class="k">self</span>, <span class="n">fullname</span>, <span class="n">path</span>=<span class="n">None</span>):
+        <span class="k">if</span> <span class="n">fullname</span>.<span class="n">startswith</span>(<span class="k">self</span>.<span class="nb">prefix</span>):
+            <span class="k">return</span> <span class="k">self</span>
 
-    def load_module(self, fullname):
-        if fullname in sys.modules:
-            return sys.modules[fullname]
-        modname = fullname.split('.', self.prefix_cutoff)[self.prefix_cutoff]
-        for path in self.module_choices:
-            realname = path % modname
-            try:
-                __import__(realname)
-            except ImportError:
-                exc_type, exc_value, tb = sys.exc_info()
-                # since we only establish the entry in sys.modules at the
-                # very this seems to be redundant, but if recursive imports
-                # happen we will call into the move import a second time.
-                # On the second invocation we still don't have an entry for
-                # fullname in sys.modules, but we will end up with the same
-                # fake module name and that import will succeed since this
-                # one already has a temporary entry in the modules dict.
-                # Since this one "succeeded" temporarily that second
-                # invocation now will have created a fullname entry in
-                # sys.modules which we have to kill.
-                sys.modules.pop(fullname, None)
+    <span class="n">def</span> <span class="n">load_module</span>(<span class="k">self</span>, <span class="n">fullname</span>):
+        <span class="k">if</span> <span class="n">fullname</span> <span class="n">in</span> <span class="n">sys</span>.<span class="n">modules:</span>
+            <span class="k">return</span> <span class="n">sys</span>.<span class="n">modules</span>[<span class="n">fullname</span>]
+        <span class="n">modname</span> = <span class="n">fullname</span>.<span class="nb">split</span>(<span class="s">&#39;.&#39;</span>, <span class="k">self</span>.<span class="n">prefix_cutoff</span>)[<span class="k">self</span>.<span class="n">prefix_cutoff</span>]
+        <span class="k">for</span> <span class="n">path</span> <span class="n">in</span> <span class="k">self</span>.<span class="n">module_choices:</span>
+            <span class="n">realname</span> = <span class="n">path</span> % <span class="n">modname</span>
+            <span class="n">try:</span>
+                <span class="n">__import__</span>(<span class="n">realname</span>)
+            <span class="n">except</span> <span class="n">ImportError:</span>
+                <span class="n">exc_type</span>, <span class="n">exc_value</span>, <span class="n">tb</span> = <span class="n">sys</span>.<span class="n">exc_info</span>()
+                <span class="c c-Singleline"># since we only establish the entry in sys.modules at the</span>
+                <span class="c c-Singleline"># very this seems to be redundant, but if recursive imports</span>
+                <span class="c c-Singleline"># happen we will call into the move import a second time.</span>
+                <span class="c c-Singleline"># On the second invocation we still don&#39;t have an entry for</span>
+                <span class="c c-Singleline"># fullname in sys.modules, but we will end up with the same</span>
+                <span class="c c-Singleline"># fake module name and that import will succeed since this</span>
+                <span class="c c-Singleline"># one already has a temporary entry in the modules dict.</span>
+                <span class="c c-Singleline"># Since this one &quot;succeeded&quot; temporarily that second</span>
+                <span class="c c-Singleline"># invocation now will have created a fullname entry in</span>
+                <span class="c c-Singleline"># sys.modules which we have to kill.</span>
+                <span class="n">sys</span>.<span class="n">modules</span>.<span class="nb">pop</span>(<span class="n">fullname</span>, <span class="n">None</span>)
 
-                # If it's an important traceback we reraise it, otherwise
-                # we swallow it and try the next choice.  The skipped frame
-                # is the one from __import__ above which we don't care about
-                if self.is_important_traceback(realname, tb):
-                    reraise(exc_type, exc_value, tb.tb_next)
-                continue
-            module = sys.modules[fullname] = sys.modules[realname]
-            if '.' not in modname:
-                setattr(sys.modules[self.wrapper_module], modname, module)
-            return module
-        raise ImportError('No module named %s' % fullname)
-</code></pre>
+                <span class="c c-Singleline"># If it&#39;s an important traceback we reraise it, otherwise</span>
+                <span class="c c-Singleline"># we swallow it and try the next choice.  The skipped frame</span>
+                <span class="c c-Singleline"># is the one from __import__ above which we don&#39;t care about</span>
+                <span class="k">if</span> <span class="k">self</span>.<span class="n">is_important_traceback</span>(<span class="n">realname</span>, <span class="n">tb</span>):
+                    <span class="n">reraise</span>(<span class="n">exc_type</span>, <span class="n">exc_value</span>, <span class="n">tb</span>.<span class="n">tb_next</span>)
+                <span class="k">continue</span>
+            <span class="k">module</span> = <span class="n">sys</span>.<span class="n">modules</span>[<span class="n">fullname</span>] = <span class="n">sys</span>.<span class="n">modules</span>[<span class="n">realname</span>]
+            <span class="k">if</span> <span class="s">&#39;.&#39;</span> <span class="nb">not</span> <span class="n">in</span> <span class="n">modname:</span>
+                <span class="n">setattr</span>(<span class="n">sys</span>.<span class="n">modules</span>[<span class="k">self</span>.<span class="n">wrapper_module</span>], <span class="n">modname</span>, <span class="k">module</span>)
+            <span class="k">return</span> <span class="k">module</span>
+        <span class="n">raise</span> <span class="n">ImportError</span>(<span class="s">&#39;No module named %s&#39;</span> % <span class="n">fullname</span>)
+</pre></div>
+
+
 <p>然后在Flask的ext目录下的__init__.py文件中，初始化了该Importer。</p>
-<pre><code>def setup():
-    from ..exthook import ExtensionImporter
-    importer = ExtensionImporter(['flask_%s', 'flaskext.%s'], __name__)
-    importer.install()
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">setup</span><span class="p">():</span>
+    <span class="kn">from</span> <span class="nn">..exthook</span> <span class="kn">import</span> <span class="n">ExtensionImporter</span>
+    <span class="n">importer</span> <span class="o">=</span> <span class="n">ExtensionImporter</span><span class="p">([</span><span class="s1">&#39;flask_</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;flaskext.</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">__name__</span><span class="p">)</span>
+    <span class="n">importer</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
+</pre></div>
+
+
 <h3>总结</h3>
 <p>希望坚持阅读到本处的你，能明白Python import的用法、实现和改造方法。准备仓促，难免会有错误，欢迎大家指正和PR。</p>
 <p>本文使用CC-BY-SA协议。</p>

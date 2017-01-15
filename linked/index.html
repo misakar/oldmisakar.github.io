@@ -13,12 +13,14 @@
 毕竟可以更灵活的运用内存.</p>
 <h2>链表抽象数据类型的定义</h2>
 <p>使用范型和嵌套类定义链表结构是非常简洁的:</p>
-<pre><code>private class Node
+<div class="codehilite"><pre><span></span>private class Node
 {
     Item item;  // 存储
     Node next;  // 引用
 }
-</code></pre>
+</pre></div>
+
+
 <p>注意⚠ </p>
 <ol>
 <li>节点类Node定义为private, 因为节点是作为内部对象使用的</li>
@@ -28,26 +30,32 @@
 <h3>表头操作</h3>
 <h4>添加表头</h4>
 <p>在链表中添加表头是十分方便的</p>
-<pre><code>Node oldfirst = first;  // 新建oldfirst引用, 保存旧的first node
+<div class="codehilite"><pre><span></span>Node oldfirst = first;  // 新建oldfirst引用, 保存旧的first node
 Node first = new Node();  // 新的first节点
 first.item = item;  // 数据存储
 first.next = oldfirst;  // 指向旧的first节点
-</code></pre>
+</pre></div>
+
+
 <p>添加表头数据和链表长度是没有关系的, 时间复杂度是常数时间.</p>
 <h4>删除表头</h4>
 <p>在链表中删除表头是十分方便的</p>
-<pre><code>first = first.next;  // 把first指向的第二个节点设为第一个节点
-</code></pre>
+<div class="codehilite"><pre><span></span>first = first.next;  // 把first指向的第二个节点设为第一个节点
+</pre></div>
+
+
 <p>删除表头是常数时间.</p>
 <h3>表尾操作</h3>
 <h4>添加表尾</h4>
 <p>在链表中添加表尾是十分方便的,
 我们只需要将最后一个last节点的next指向新的last节点(原来是null)</p>
-<pre><code>Node oldlast = last;
+<div class="codehilite"><pre><span></span>Node oldlast = last;
 Node last = new Node();
 last.item = item;
 oldlast.next = last;
-</code></pre>
+</pre></div>
+
+
 <p>添加表尾是常数时间.</p>
 <h4>删除表尾</h4>
 <p>删除表尾就比较麻烦了, 因为删除表尾需要知道倒数第二个元素,
@@ -56,7 +64,7 @@ oldlast.next = last;
 使用双向链表可以避免这个问题;)</p>
 <h2>实现</h2>
 <h3>栈</h3>
-<pre><code>public class Stack&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class Stack&lt;Item&gt;
 {
     private Node first;  // 栈顶
     private int N;  // 栈种元素的数量
@@ -87,11 +95,13 @@ oldlast.next = last;
         return item;
     }
 }
-</code></pre>
+</pre></div>
+
+
 <p>通过对表头的操作, 使得push和pop都是常数时间, 而且, 链表的大小是动态的,
 比起上一篇博客中费劲心思的数组扩容, 链表简直是完美.</p>
 <h3>队列</h3>
-<pre><code>public class Queue&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class Queue&lt;Item&gt;
 {
     private Node last;  // 出队列
     private Node first; // 入队列
@@ -123,48 +133,50 @@ oldlast.next = last;
         return item;
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h3>背包</h3>
-<pre><code>import java.util.iterator
-public class Bag&lt;Item&gt; implements Iterable&lt;Item&gt;
-{
-    private Node first;
-    private class Node
-    {
-        Item item;
-        Node next;
-    }
-    public void add(Item item)
-    {
-        Node oldfirst = first;
-        first = new Node();
-        first.item = item;
-        first.next = oldfirst;
-    }
-    public Iterator&lt;Item&gt; iterator()
-    {
-        // 实现Iterable接口
-        // 返回一个Iterator对象
-        return new ListIterator();
-    }
-    public class ListIterator implements Iterator&lt;Item&gt;
-    {
-        // ListIterator迭代器
-        // 实现Iterator迭代器接口: hasNext, next, remove
-        private Node current = first;
-        public boolean hasNext()
-            { return current != null; }
-        public void remove() {}
-        public Item next()
-        {
-            // 迭代器遍历方法
-            Item item = current.item;
-            current = current.next;
-            return item;
-        }
-    }
-}
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">java.util.iterator</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">Bag</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span> <span class="n">implements</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">private</span> <span class="n">Node</span> <span class="n">first</span><span class="p">;</span>
+    <span class="n">private</span> <span class="k">class</span> <span class="nc">Node</span>
+    <span class="p">{</span>
+        <span class="n">Item</span> <span class="n">item</span><span class="p">;</span>
+        <span class="n">Node</span> <span class="nb">next</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="n">void</span> <span class="n">add</span><span class="p">(</span><span class="n">Item</span> <span class="n">item</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">Node</span> <span class="n">oldfirst</span> <span class="o">=</span> <span class="n">first</span><span class="p">;</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Node</span><span class="p">();</span>
+        <span class="n">first</span><span class="o">.</span><span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+        <span class="n">first</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">oldfirst</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span> <span class="n">iterator</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="o">//</span> <span class="err">实现</span><span class="n">Iterable</span><span class="err">接口</span>
+        <span class="o">//</span> <span class="err">返回一个</span><span class="n">Iterator</span><span class="err">对象</span>
+        <span class="k">return</span> <span class="n">new</span> <span class="n">ListIterator</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="k">class</span> <span class="nc">ListIterator</span> <span class="n">implements</span> <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+    <span class="p">{</span>
+        <span class="o">//</span> <span class="n">ListIterator</span><span class="err">迭代器</span>
+        <span class="o">//</span> <span class="err">实现</span><span class="n">Iterator</span><span class="err">迭代器接口</span><span class="p">:</span> <span class="n">hasNext</span><span class="p">,</span> <span class="nb">next</span><span class="p">,</span> <span class="n">remove</span>
+        <span class="n">private</span> <span class="n">Node</span> <span class="n">current</span> <span class="o">=</span> <span class="n">first</span><span class="p">;</span>
+        <span class="n">public</span> <span class="n">boolean</span> <span class="n">hasNext</span><span class="p">()</span>
+            <span class="p">{</span> <span class="k">return</span> <span class="n">current</span> <span class="o">!=</span> <span class="n">null</span><span class="p">;</span> <span class="p">}</span>
+        <span class="n">public</span> <span class="n">void</span> <span class="n">remove</span><span class="p">()</span> <span class="p">{}</span>
+        <span class="n">public</span> <span class="n">Item</span> <span class="nb">next</span><span class="p">()</span>
+        <span class="p">{</span>
+            <span class="o">//</span> <span class="err">迭代器遍历方法</span>
+            <span class="n">Item</span> <span class="n">item</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">item</span><span class="p">;</span>
+            <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">next</span><span class="p">;</span>
+            <span class="k">return</span> <span class="n">item</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
         <div id="disqus_thread"></div>
         <script>
         /**

@@ -17,25 +17,29 @@ xml)传递给客户端,
 <h2>Restful的6个核心概念</h2>
 <h3>Client-Server</h3>
 <p>我上段说过, API是衔接Client和Server的桥梁,</p>
-<pre><code>________
+<div class="codehilite"><pre><span></span>________
 |      |                    __________
 |      |&lt;-----A--P--I------&gt;| client |
 |server|&lt;-----A--P--I------&gt;|        |
 |      |                    \--------/
 |______|                    /_________\
-</code></pre>
+</pre></div>
+
+
 <p>这里的Client是客户端的统称, 它可以是浏览器(web应用), 手机(安卓APP),
 也可以是服务器:), 是的, 服务器和服务器之间也可以通过API进行交互, 构建集群.</p>
 <h3>Layered System</h3>
 <p>API是可以分层的, http协议可以经过多层代理, API也是如此,
 你可以在server和client之间加入中间件进行一些操作, 比如请求分发、请求过滤...</p>
-<pre><code>________
+<div class="codehilite"><pre><span></span>________
 |      | &lt;-----A--P--I------&gt; __________
 |      |    ____________      | client |
 |server|    |  Layered |      |        |
 |      |    |__________|      \--------/
 |______| &lt;-----A--P--I------&gt; /_________\
-</code></pre>
+</pre></div>
+
+
 <p>你可以用中间件实现一个简单的路由系统, 比如你偏爱flask简洁的装饰器路由,
 你可以实现这样的一个装饰器,
 并作为中间件的形式在web开发中应用到别的web框架上.<br/>
@@ -206,11 +210,13 @@ API的错误处理也应该严格遵循状态码, 常见状态码以及含义如
 </ul>
 <h3>错误处理</h3>
 <p>相比于传统的web应用返回html页面, API的错误设计也应该返回json格式, 比如</p>
-<pre><code>{
-    'message': 'not found',
-    'status': 404
+<div class="codehilite"><pre><span></span>{
+    &#39;message&#39;: &#39;not found&#39;,
+    &#39;status&#39;: 404
 }
-</code></pre>
+</pre></div>
+
+
 <h3>API返回结果</h3>
 <p>还是以user为例</p>
 <ol>
@@ -246,12 +252,14 @@ API的错误处理也应该严格遵循状态码, 常见状态码以及含义如
 <p>客户端使用API获取资源和我们通过浏览器上网本质上都是一样的,
 都是对服务器资源的获取和查找. 正如同网站上的链接将我们指向不同的资源,
 API的设计也应该时可以索引的, 有层次的, 比如(以user为例):</p>
-<pre><code>{
-    'id': 2,
-    'username': 'neo1218',
-    'comments': 'https://api.foo.com/v1/users/2/comments/'
+<div class="codehilite"><pre><span></span>{
+    &#39;id&#39;: 2,
+    &#39;username&#39;: &#39;neo1218&#39;,
+    &#39;comments&#39;: &#39;https://api.foo.com/v1/users/2/comments/&#39;
 }
-</code></pre>
+</pre></div>
+
+
 <p>这里id为2的用户评论以指向评论资源的链接表示, 既避免了显示信息过多,
 又方便客户端索引查找.</p>
 <h3>认证</h3>

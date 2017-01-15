@@ -172,63 +172,65 @@ EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
 看到一群人围着一个金光闪闪的卷轴在讨论着什么, 于是我便凑了上去。
 原来这个卷轴上写满了Assembly语言奇奇怪怪的符号, 我便把这些符号抄写在了vim上(vim是Assembly王国通用的记载工具类似纸张)。回到家中,
 我拿出vim开始解读(注释部分就是我的解读)</p>
-<pre><code>global _start, _kmain  ;-- global 标记着程序的开始 --
-; -- 一系列的全局变量 --
-; -- ctors(保存着程序中全局构造函数的指针数组)
-; -- dtors(保存着程序中全局析构函数的指针数组)
-extern kmain, start_ctors, end_ctors, start_dtors, end_dtors
+<div class="codehilite"><pre><span></span><span class="n">global</span> <span class="n">_start</span><span class="p">,</span> <span class="n">_kmain</span>  <span class="p">;</span><span class="o">--</span> <span class="n">global</span> <span class="err">标记着程序的开始</span> <span class="o">--</span>
+<span class="p">;</span> <span class="o">--</span> <span class="err">一系列的全局变量</span> <span class="o">--</span>
+<span class="p">;</span> <span class="o">--</span> <span class="n">ctors</span><span class="p">(</span><span class="err">保存着程序中全局构造函数的指针数组</span><span class="p">)</span>
+<span class="p">;</span> <span class="o">--</span> <span class="n">dtors</span><span class="p">(</span><span class="err">保存着程序中全局析构函数的指针数组</span><span class="p">)</span>
+<span class="k">extern</span> <span class="n">kmain</span><span class="p">,</span> <span class="n">start_ctors</span><span class="p">,</span> <span class="n">end_ctors</span><span class="p">,</span> <span class="n">start_dtors</span><span class="p">,</span> <span class="n">end_dtors</span>
 
-; -- 宏定义 --
-%define MULTIBOOT_HEADER_MAGIC  0x1BADB002
-%define MULTIBOOT_HEADER_FLAGS  0x00000003  ; -- flag --
-%define CHECKSUM -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+<span class="p">;</span> <span class="o">--</span> <span class="err">宏定义</span> <span class="o">--</span>
+<span class="nf">%define</span> <span class="n">MULTIBOOT_HEADER_MAGIC</span>  <span class="mh">0x1BADB002</span>
+<span class="nf">%define</span> <span class="n">MULTIBOOT_HEADER_FLAGS</span>  <span class="mh">0x00000003</span>  <span class="p">;</span> <span class="o">--</span> <span class="n">flag</span> <span class="o">--</span>
+<span class="nf">%define</span> <span class="n">CHECKSUM</span> <span class="o">-</span><span class="p">(</span><span class="n">MULTIBOOT_HEADER_MAGIC</span> <span class="o">+</span> <span class="n">MULTIBOOT_HEADER_FLAGS</span><span class="p">)</span>
 
-;-- Entry point --
-_start:
-    jmp start  ; -- 无条件转移到_start处
+<span class="p">;</span><span class="o">--</span> <span class="n">Entry</span> <span class="n">point</span> <span class="o">--</span>
+<span class="nl">_start</span><span class="p">:</span>
+    <span class="n">jmp</span> <span class="n">start</span>  <span class="p">;</span> <span class="o">--</span> <span class="err">无条件转移到</span><span class="n">_start</span><span class="err">处</span>
 
-;-- Multiboot header --
-align 4  ; 调整下面代码段中的指针为2^4倍数, 空位自动填充,
-         ; 使得下一条指令出现在能被16整除的地址上,
-         ; 对齐可以使CPU取指令更快
+<span class="p">;</span><span class="o">--</span> <span class="n">Multiboot</span> <span class="n">header</span> <span class="o">--</span>
+<span class="n">align</span> <span class="mi">4</span>  <span class="p">;</span> <span class="err">调整下面代码段中的指针为</span><span class="mi">2</span><span class="o">^</span><span class="mi">4</span><span class="err">倍数</span><span class="p">,</span> <span class="err">空位自动填充</span><span class="p">,</span>
+         <span class="p">;</span> <span class="err">使得下一条指令出现在能被</span><span class="mi">16</span><span class="err">整除的地址上</span><span class="p">,</span>
+         <span class="p">;</span> <span class="err">对齐可以使</span><span class="n">CPU</span><span class="err">取指令更快</span>
 
-multiboot_header:
-dd MULTIBOOT_HEADER_MAGIC  ; 声明一个4字节, 并将 MULTIBOOT_HEADER_MAGIC
-                           ; 的值存入其中(下同)
-dd MULTIBOOT_HEADER_FLAGS
-dd CHECKSUM
-;--/Multiboot header --
+<span class="nl">multiboot_header</span><span class="p">:</span>
+<span class="n">dd</span> <span class="n">MULTIBOOT_HEADER_MAGIC</span>  <span class="p">;</span> <span class="err">声明一个</span><span class="mi">4</span><span class="err">字节</span><span class="p">,</span> <span class="err">并将</span> <span class="n">MULTIBOOT_HEADER_MAGIC</span>
+                           <span class="p">;</span> <span class="err">的值存入其中</span><span class="p">(</span><span class="err">下同</span><span class="p">)</span>
+<span class="n">dd</span> <span class="n">MULTIBOOT_HEADER_FLAGS</span>
+<span class="n">dd</span> <span class="n">CHECKSUM</span>
+<span class="p">;</span><span class="o">--/</span><span class="n">Multiboot</span> <span class="n">header</span> <span class="o">--</span>
 
-start:
-        push ebx  ; 数据入栈(ebx寄存器)
+<span class="nl">start</span><span class="p">:</span>
+        <span class="n">push</span> <span class="n">ebx</span>  <span class="p">;</span> <span class="err">数据入栈</span><span class="p">(</span><span class="n">ebx</span><span class="err">寄存器</span><span class="p">)</span>
 
-; -- 开始循环 --
-static_ctors_loop:
-   mov ebx, start_ctors
-   jmp .test
-.body:
-   call [ebx]
-   add ebx,4
-.test:
-   cmp ebx, end_ctors
-   jb .body
+<span class="p">;</span> <span class="o">--</span> <span class="err">开始循环</span> <span class="o">--</span>
+<span class="nl">static_ctors_loop</span><span class="p">:</span>
+   <span class="n">mov</span> <span class="n">ebx</span><span class="p">,</span> <span class="n">start_ctors</span>
+   <span class="n">jmp</span> <span class="p">.</span><span class="n">test</span>
+<span class="p">.</span><span class="nl">body</span><span class="p">:</span>
+   <span class="n">call</span> <span class="p">[</span><span class="n">ebx</span><span class="p">]</span>
+   <span class="n">add</span> <span class="n">ebx</span><span class="p">,</span><span class="mi">4</span>
+<span class="p">.</span><span class="nl">test</span><span class="p">:</span>
+   <span class="n">cmp</span> <span class="n">ebx</span><span class="p">,</span> <span class="n">end_ctors</span>
+   <span class="n">jb</span> <span class="p">.</span><span class="n">body</span>
 
-   call kmain                      ; call kernel proper
+   <span class="n">call</span> <span class="n">kmain</span>                      <span class="p">;</span> <span class="n">call</span> <span class="n">kernel</span> <span class="n">proper</span>
 
-static_dtors_loop:
-   mov ebx, start_dtors
-   jmp .test
-.body:
-   call [ebx]
-   add ebx,4
-.test:
-   cmp ebx, end_dtors
-   jb .body
+<span class="nl">static_dtors_loop</span><span class="p">:</span>
+   <span class="n">mov</span> <span class="n">ebx</span><span class="p">,</span> <span class="n">start_dtors</span>
+   <span class="n">jmp</span> <span class="p">.</span><span class="n">test</span>
+<span class="p">.</span><span class="nl">body</span><span class="p">:</span>
+   <span class="n">call</span> <span class="p">[</span><span class="n">ebx</span><span class="p">]</span>
+   <span class="n">add</span> <span class="n">ebx</span><span class="p">,</span><span class="mi">4</span>
+<span class="p">.</span><span class="nl">test</span><span class="p">:</span>
+   <span class="n">cmp</span> <span class="n">ebx</span><span class="p">,</span> <span class="n">end_dtors</span>
+   <span class="n">jb</span> <span class="p">.</span><span class="n">body</span>
 
-        ; 中断程序
-        cli ; stop interrupts
-        hlt ; halt the CPU
-</code></pre>
+        <span class="p">;</span> <span class="err">中断程序</span>
+        <span class="n">cli</span> <span class="p">;</span> <span class="n">stop</span> <span class="n">interrupts</span>
+        <span class="n">hlt</span> <span class="p">;</span> <span class="n">halt</span> <span class="n">the</span> <span class="n">CPU</span>
+</pre></div>
+
+
 <p>原来这个卷轴上的符号是加载强大操作系统内核(call kmain)的汇编! <br/>
 就在我迷迷糊糊, 仿佛读懂的那刹那, 突然狂风大作, 天降真神!!!
 原来是[CPU大神]显灵了!!!<br/>

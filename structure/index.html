@@ -45,25 +45,29 @@ mana其实就是一个命令集和Flask架构的拆分, 没有多少状态需要
 <p>装饰器是我最喜欢的Python模式没有之一, 因为装饰器是真正的<strong>简洁优雅</strong>,
 装饰器的实现不是偶然, 或者说是立足于 <strong>函数是对象</strong> 和 <strong>@语法糖</strong> 这两个特性: <br/>
 <strong>--&gt; 函数是对象:</strong></p>
-<pre><code>def func():
-    print "I am func, haha"
+<div class="codehilite"><pre><span></span>def func():
+    print &quot;I am func, haha&quot;
 
 def decorator(func):
-    print "before func"
+    print &quot;before func&quot;
     func()
-    print "after func"
+    print &quot;after func&quot;
 
 func = decorator(func)
-</code></pre>
+</pre></div>
+
+
 <p><hr/>
 <strong>--&gt; @语法糖:</strong></p>
-<pre><code>func = decorator(func)
+<div class="codehilite"><pre><span></span>func = decorator(func)
         ||
         \/
 @decorator
 def func():
-    print "I am func, haha"
-</code></pre>
+    print &quot;I am func, haha&quot;
+</pre></div>
+
+
 <p><strong>@decorator</strong> 就是这么美妙!
 装饰器可以在主函数体(func)不被修改的情况下对主函数进行装饰,
 就像给一个人化妆一样, 或者给他穿上一件好看的衣服,
@@ -71,48 +75,54 @@ def func():
 <p>我一直在思考能不能写一个纯装饰器式的Python Web框架, APP只要实现wsgi接口,
 剩下的功能视图、路由、前端模版、或者插件集成、中间件集成全部由框架提供的装饰器解决。当然这样写出来的
 代码不一定好看...(头重脚轻)</p>
-<pre><code>@app.add('auth', AuthCode)
-@app.route('/')
-@app.views('index.html')
+<div class="codehilite"><pre><span></span>@app.add(&#39;auth&#39;, AuthCode)
+@app.route(&#39;/&#39;)
+@app.views(&#39;index.html&#39;)
 @auth.login_requird
 def index():
     return {}
-</code></pre>
+</pre></div>
+
+
 <h2>上下文管理器</h2>
 <p>上下文管理器和with语句使用,
 程序员只需要关注主要功能实现,对于进入和退出的上下文接口则由上下文管理器自己处理。<br/>
 <strong>--&gt; 类实现</strong></p>
-<pre><code>class MyOpen(object):
-    def __init__(self, filename):
-        self.file = open(filename)
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">MyOpen</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">__init__</span>(<span class="k">self</span>, <span class="n">filename</span>):
+        <span class="k">self</span>.<span class="n">file</span> = <span class="nb">open</span>(<span class="n">filename</span>)
 
-    def __enter__(self):
-        return self.file
+    <span class="n">def</span> <span class="n">__enter__</span>(<span class="k">self</span>):
+        <span class="k">return</span> <span class="k">self</span>.<span class="n">file</span>
 
-    def __exit__(self, ctx_type, ctx_value, ctx_traceback):
-        self.file.close()
+    <span class="n">def</span> <span class="n">__exit__</span>(<span class="k">self</span>, <span class="n">ctx_type</span>, <span class="n">ctx_value</span>, <span class="n">ctx_traceback</span>):
+        <span class="k">self</span>.<span class="n">file</span>.<span class="nb">close</span>()
 
-with MyOpen('filename') as f:
-    f.read()
-</code></pre>
+<span class="n">with</span> <span class="n">MyOpen</span>(<span class="s">&#39;filename&#39;</span>) <span class="k">as</span> <span class="n">f:</span>
+    <span class="n">f</span>.<span class="nb">read</span>()
+</pre></div>
+
+
 <p>MyOpen('filename')会实例化一个Python对象,
 with语句调用<code><strong>enter</strong></code>方法将self.file属性传给f,
 然后在with语句内对f进行操作,
 with结束后会自动调用类的<code><strong>exit</strong></code>方法。</p>
 <p><strong>--&gt; 函数实现(是时候体现装饰器的强大了)</strong></p>
-<pre><code>from contextlib import contextmanager
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span>
 
-@contextmanager
-def my_open(filename):
-    file = open(filename)
-    try:
-        yield file
-    finally:
-        file.close()
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">my_open</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="nb">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="nb">file</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-with my_open(filename) as f:
-    f.read()
-</code></pre>
+<span class="k">with</span> <span class="n">my_open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+
+
 <p>这时进入with语句, 会把yield了的file对象传给f,
 然后在with语句内对f对象进行操作,在with语句结束时会调用finally语句的close方法。</p>
 <h2>说说弱类型</h2>

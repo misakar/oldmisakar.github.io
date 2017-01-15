@@ -11,7 +11,7 @@
 不过需要注意, 不同语言的内存分配和垃圾回收机制不同, 不同系统的内存地址大小也不同, 这会影响到我们的估算. 下面的分析是针对java虚拟机和64位架构机器(内存地址8字节)进行的.</p>
 <h2>原始数据类型</h2>
 <p>Java中原始数据类型内存分配:</p>
-<pre><code>类型              字节
+<div class="codehilite"><pre><span></span>类型              字节
 ---------------------
 boolean            1
 byte               1
@@ -20,7 +20,9 @@ int                4
 float              4
 long               8
 double             8
-</code></pre>
+</pre></div>
+
+
 <h2>对象</h2>
 <p>对象包含16字节的内存开销, 这些内存开销包含: <br></p>
 <ol>
@@ -29,21 +31,25 @@ double             8
 <li>同步信息</li>
 </ol>
 <p>以整数封装对象分析为例(之前拆解包的时候提到过):</p>
-<pre><code>public class Integer
+<div class="codehilite"><pre><span></span>public class Integer
 {
     private int x;
 }
-</code></pre>
+</pre></div>
+
+
 <p>内存空间占用 = 对象内存开销(16字节) + int内存占用(4字节) + 填充字节(4字节) = 24字节 <br>
 注意, 一般内存的占用都会被填充为8字节(内存地址空间)的倍数.</p>
 <h2>链表</h2>
 <p>链表是嵌套的非静态类, 嵌套类需要额外的一个引用(8字节)指向外部类, 以链表Node类为例:</p>
-<pre><code>public class Node
+<div class="codehilite"><pre><span></span>public class Node
 {
     private Item item;
     Private Node next;
 }
-</code></pre>
+</pre></div>
+
+
 <p>内存空间占用 = 对象内存开销(16字节) + 指向外部类的引用(8字节) + 指向Item对象引用(8字节) + 指向Node对象的引用(8字节) + 填充字节(0字节) = 40字节<br>
 这样, 可以算出前面几篇博客中谈到的链表实现整型下压栈的内存空间占用: Node类(40字节) + 长度纪录(4字节) + 对象开销(16字节) + 填充字节(4字节) = 64字节<br></p>
 <h2>数组</h2>

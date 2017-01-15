@@ -27,22 +27,24 @@ WSGI只是一个规范, 符合WSGI规范的服务器就可以运行符合WSGI规
 <h4>WSGI APP</h4>
 <p>符合WSGI规范的APP,
 需要能够接受WSGI服务器提供的environ环境变量字典和start_response回调函数,</p>
-<pre><code>def application(environ, start_response):
-    """
+<div class="codehilite"><pre><span></span>def application(environ, start_response):
+    &quot;&quot;&quot;
     a simple wsgi app
     environ: a python dict contains request environment
     start_response: a server side callback function to
                     get status code &amp; headers
-    """
-    response_body = "this is a wsgi app"
-    status = '200 OK'
+    &quot;&quot;&quot;
+    response_body = &quot;this is a wsgi app&quot;
+    status = &#39;200 OK&#39;
     response_headers = [
-        ('Content-Type': 'text/plain'),
-        ('Content-Length': str(len(response_body)))
+        (&#39;Content-Type&#39;: &#39;text/plain&#39;),
+        (&#39;Content-Length&#39;: str(len(response_body)))
     ]
     start_response(response_headers, status)
     return [response_body] # literator object
-</code></pre>
+</pre></div>
+
+
 <h4>WSGI服务器</h4>
 <p>WSGI服务器需要能够调用WSGI应用, 并且可以获取请求环境environ,
 并将environ字典传递给WSGI APP, 同时需要实现一个start_response回调函数用于接受
@@ -65,21 +67,25 @@ start_response回调函数都没有细说,
 web框架可以从WSGI服务器提供的environ环境变量字典中获取用户发送的请求信息,
 比如Flask框架通过request对象获取http request信息,
 request对象实际上就是对environ的处理, 我们可以构建一个简单的request对象:</p>
-<pre><code>from werkzeug.test import test_environ
-from werkzeug import Request
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">werkzeug.test</span> <span class="kn">import</span> <span class="n">test_environ</span>
+<span class="kn">from</span> <span class="nn">werkzeug</span> <span class="kn">import</span> <span class="n">Request</span>
 
-request = Request(test_environ)
+<span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">test_environ</span><span class="p">)</span>
 
-&gt;&gt; request.headers
-&gt;&gt; request.status
-......
-</code></pre>
+<span class="o">&gt;&gt;</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span>
+<span class="o">&gt;&gt;</span> <span class="n">request</span><span class="o">.</span><span class="n">status</span>
+<span class="o">......</span>
+</pre></div>
+
+
 <h4>匹配用户请求地址(URL)调用视图函数进行处理</h4>
 <p>匹配用户输入的URL就是根据用户输入的URL调用相应的函数进行处理。<br/>
 首先我们先分析一下URL:</p>
-<pre><code>URL是统一资源定位符, 区别于URI(统一资源标志符),
+<div class="codehilite"><pre><span></span>URL是统一资源定位符, 区别于URI(统一资源标志符),
 URL可以在互联网上唯一标识并找到一个资源。
-</code></pre>
+</pre></div>
+
+
 <p>URL由如下几个部分构成</p>
 <ol>
 <li>访问协议<ul>
@@ -102,34 +108,40 @@ web框架根据path就可以知道需要寻找和返回哪个资源, 给出respo
 从而获取用户希望传入什么参数,获取哪个资源, 这种机制就是<strong>正则匹配</strong>。<br/>
 使用<strong><a href="http://www.regular-expressions.info/quickstart.html">正则表达式</a></strong>可以将路径作为一种模式而不是固定的字符串进行匹配。<br/>
 我们以<code>/username/<string:username>/</code>这个url匹配为例:</p>
-<pre><code># 使用python的re模块
-import re
+<div class="codehilite"><pre><span></span><span class="c1"># 使用python的re模块</span>
+<span class="kn">import</span> <span class="nn">re</span>
 
-url_regex = re.compile(r"^/username/(.+)$")
-match = url_regex.match("/username/neo1218")
+<span class="n">url_regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">r&quot;^/username/(.+)$&quot;</span><span class="p">)</span>
+<span class="n">match</span> <span class="o">=</span> <span class="n">url_regex</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s2">&quot;/username/neo1218&quot;</span><span class="p">)</span>
 
-print match.groups()
+<span class="k">print</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
 
-# result: ('neo1218',)
-</code></pre>
+<span class="c1"># result: (&#39;neo1218&#39;,)</span>
+</pre></div>
+
+
 <p>我们已经成功的获取用户传入的username值。<br/>
 我们可以更进一步, 优化匹配的输出, 使用正则的<strong>命名捕获组</strong>:</p>
-<pre><code>......
-url_regex = re.compile(r"^/username/(?P&lt;username&gt;.+)")
+<div class="codehilite"><pre><span></span>......
+url_regex = re.compile(r&quot;^/username/(?P&lt;username&gt;.+)&quot;)
 ......
 
-# result: {'username': 'neo1218'}
-</code></pre>
+# result: {&#39;username&#39;: &#39;neo1218&#39;}
+</pre></div>
+
+
 <p>现在知道了如何匹配用户的动态url,
 框架就需要实现相应的<code>build_url_regex方法</code>从而根据用户定义的url格式生成匹配的正则表达式:</p>
-<pre><code>def build_url_regex(url):
-    url_regex = re.sub(r'(&lt;\w+&gt;)', r'(?P\1.+)', url)
-    return re.compile("^{}$".format(url_regex))
+<div class="codehilite"><pre><span></span>def build_url_regex(url):
+    url_regex = re.sub(r&#39;(&lt;\w+&gt;)&#39;, r&#39;(?P\1.+)&#39;, url)
+    return re.compile(&quot;^{}$&quot;.format(url_regex))
 
-build_url_regex('/username/&lt;username&gt;')
+build_url_regex(&#39;/username/&lt;username&gt;&#39;)
 
 # result: ^/hello/(?P&lt;username&gt;.+)$
-</code></pre>
+</pre></div>
+
+
 <p>现在, 一个Python
 Web框架就可以根据用户定义的URL生成相应的正则并用这个正则表达式去匹配用户在浏览器中输入的实际模式串, 拿到
 传入参数, 进行处理。<br/>
@@ -139,9 +151,9 @@ Flask没有让程序员直接去写正则,
 在flask中则是实现了一个<strong>route装饰器</strong>, route装饰器的基本原理就是建立<strong>url</strong>, <strong>视图函数</strong>, <strong>端点</strong>
 三者之间的关系, 这样通过输入的url,确定相应的端点, 就可以调用相应的视图函数,
 反之通过视图函数就可以构建url。上源码(省略掉了部分官方注释):</p>
-<pre><code>"""flask app.py"""
+<div class="codehilite"><pre><span></span>&quot;&quot;&quot;flask app.py&quot;&quot;&quot;
 def route(self, rule, **options):
-    """
+    &quot;&quot;&quot;
     flask route装饰器
     :param rule:  URL(字符串的形式)
     :param endpoint:官方解释如下:
@@ -150,31 +162,31 @@ def route(self, rule, **options):
            端点实际上就是url在框架内部的表示, 默认是视图函数的名字,
            用户可以自定义
     :param options: 定义HTTP方法组 (GET, POST, OPTIONS, HEAD...)
-    """
+    &quot;&quot;&quot;
     def decorator(f):
-        endpoint = options.pop('endpoint', None)  # 确定端点
+        endpoint = options.pop(&#39;endpoint&#39;, None)  # 确定端点
         # 建立端点, url, 视图函数三者间的关系
         self.add_url_rule(rule, endpoint, f, **options)
         return f
     return decorator
 
-"""flask app.py"""
+&quot;&quot;&quot;flask app.py&quot;&quot;&quot;
 @setupmethod
 def add_url_rule(self, rule, endpoint=None, view_func=None, **options):
-    """注册url, 处理HTTP方法, 添加端点和视图函数的关系字典"""
+    &quot;&quot;&quot;注册url, 处理HTTP方法, 添加端点和视图函数的关系字典&quot;&quot;&quot;
     if methods is None:
-        methods = getattr(view_func, 'methods', None) or (GET', )
+        methods = getattr(view_func, &#39;methods&#39;, None) or (GET&#39;, )
     if isinstance(methods, string_types):
-        raise TypeError('Allowed methods have to be iterables of strings,
-                         for example: @app.route(..., methods=["POST"])')
+        raise TypeError(&#39;Allowed methods have to be iterables of strings,
+                         for example: @app.route(..., methods=[&quot;POST&quot;])&#39;)
     methods = set(item.upper() for item in methods)
-    required_methods = set(getattr(view_func, 'required_methods', ()))
+    required_methods = set(getattr(view_func, &#39;required_methods&#39;, ()))
     provide_automatic_options = getattr(view_func,
-        'provide_automatic_options', None)
+        &#39;provide_automatic_options&#39;, None)
     if provide_automatic_options is None:
-        if 'OPTIONS' not in methods:
+        if &#39;OPTIONS&#39; not in methods:
             provide_automatic_options = True
-            required_methods.add('OPTIONS')
+            required_methods.add(&#39;OPTIONS&#39;)
         else:
             provide_automatic_options = False
     methods |= required_methods
@@ -185,13 +197,15 @@ def add_url_rule(self, rule, endpoint=None, view_func=None, **options):
     if view_func is not None:
         old_func = self.view_functions.get(endpoint)
         if old_func is not None and old_func != view_fun:
-            raise AssertionError('View function mapping is overwriting an '
-                                 'existing endpoint function: %s' % endpoint)
+            raise AssertionError(&#39;View function mapping is overwriting an &#39;
+                                 &#39;existing endpoint function: %s&#39; % endpoint)
         self.view_functions[endpoint] = view_func
 
-"""flask app.py"""
+&quot;&quot;&quot;flask app.py&quot;&quot;&quot;
 self.view_funcions = {}
-</code></pre>
+</pre></div>
+
+
 <p>正则表达式的部分则被封装在了werkzeug层, flask框架的使用者是感觉不到的。<br/>
 django这块我还没有研究过, 先把坑挖在这里吧。</p>
 <h3>3. 处理HTTP方法</h3>
@@ -210,28 +224,34 @@ sql语句是关系型数据库操作的核心,
 所以我们可以定义两大类函数: select 和 update,
 然后将sql语句作为函数参数进行传递,
 当然对于操作的数据库对象可以另定义参数。比如:</p>
-<pre><code>from webframework import db
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">webframework</span> <span class="kn">import</span> <span class="n">db</span>
 
-db.select('select * from users')
-db.update('insert into users(id, name) value(?, ?)', 4, 'neo1218')
-</code></pre>
+<span class="n">db</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;select * from users&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s1">&#39;insert into users(id, name) value(?, ?)&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;neo1218&#39;</span><span class="p">)</span>
+</pre></div>
+
+
 <p>而且, 为了方便数据交流, 完全可以使用json的方式表示查询得到的数据库数据, 比如:</p>
-<pre><code>db.select('select * from users')
+<div class="codehilite"><pre><span></span>db.select(&#39;select * from users&#39;)
 
 [
-    {'id': 1, 'username': 'neo1218'},
-    {'id': 2, 'username': 'zxc0328'},
-    {'id': 3, 'username': 'mitsuhiko'}
+    {&#39;id&#39;: 1, &#39;username&#39;: &#39;neo1218&#39;},
+    {&#39;id&#39;: 2, &#39;username&#39;: &#39;zxc0328&#39;},
+    {&#39;id&#39;: 3, &#39;username&#39;: &#39;mitsuhiko&#39;}
 ]
-</code></pre>
+</pre></div>
+
+
 <p>如果每次编写数据库操作都需要手动连接数据库, 然后关闭数据库,
 这显然是对程序员不友好的, 对于上下文的连接控制我们自然想到使用装饰器(ps:
 装饰器是我的最爱!因为暴露的API十分简洁), 就像这样:</p>
-<pre><code>@with_connection
+<div class="codehilite"><pre><span></span>@with_connection
 def do_sth():
-    db.select('xxxxxxxx')
-    db.update('xxxxxxxx')
-</code></pre>
+    db.select(&#39;xxxxxxxx&#39;)
+    db.update(&#39;xxxxxxxx&#39;)
+</pre></div>
+
+
 <p>在<code>with_connection</code>装饰器中, 我们就可以处理<code>db.connect</code>,
 以及断开数据库连接后的上下文销毁。
 <br/>
@@ -243,12 +263,14 @@ db模块一般在框架中内置实现, 我们也可以让自己的框架兼容�
 一个明确的响应需要有清晰的请求头, 简单的状态码,
 以及必要的响应体。所以一个web框架至少应该支持响应头定制、自定义状态码。其实这个不难实现,
 相应头其实就是一个字典, 状态码也可以直接传给响应。比如:</p>
-<pre><code>@view(app, '/index')
+<div class="codehilite"><pre><span></span>@view(app, &#39;/index&#39;)
 def index():
     return json({
-        'username': 'neo1218'
-    }), 200, {'User-Agent': 'xxxxxxxxxxxxx'}
-</code></pre>
+        &#39;username&#39;: &#39;neo1218&#39;
+    }), 200, {&#39;User-Agent&#39;: &#39;xxxxxxxxxxxxx&#39;}
+</pre></div>
+
+
 <p>或者就把response当作响应对象, 直接对对象进行操作。</p>
 <h2>后记</h2>
 <p><hr/>

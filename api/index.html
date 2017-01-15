@@ -15,91 +15,103 @@
 <p><strong>A</strong>: 即数据库中的数据</p>
 <h2>Q: 如何表示资源</h2>
 <p><strong>A</strong>: 使用json的方式表示, 以<strong>键值的方式</strong>表示一个资源, 每一个键代表资源的一个属性; 使用数组(列表)表示资源的集合, 例如</p>
-<pre><code>[
+<div class="codehilite"><pre><span></span>[
     {
-        'id': 1,
-        'username': 'neo1218'
+        &#39;id&#39;: 1,
+        &#39;username&#39;: &#39;neo1218&#39;
     },
     {
-        'id': 2,
-        'username': 'zxc0328'
+        &#39;id&#39;: 2,
+        &#39;username&#39;: &#39;zxc0328&#39;
     }
 ]
-</code></pre>
+</pre></div>
+
+
 <h2>Q: 如何使用HTTP的方式对资源进行操作</h2>
 <p><strong>A</strong>: 涉及HTTP方法映射: 如下表</p>
-<pre><code>GET ------&gt; 获取(集合,特定资源)
+<div class="codehilite"><pre><span></span>GET ------&gt; 获取(集合,特定资源)
 POST -----&gt; 创建(特定资源)
 PUT ------&gt; 更新(特定资源)
 DELETE ---&gt; 删除(特定资源)
-</code></pre>
+</pre></div>
+
+
 <h2>Q: 那么flask编写API的核心是什么?</h2>
 <p><strong>A</strong>: <br/></p>
 <h3>1. 提供资源</h3>
 <p>flask需要把数据库资源通过json的形式提供出去, 所以需要在数据库Model中定义<code>to_json方法</code>, 以
 json的形式表示数据库数据, 以User类为例</p>
-<pre><code>class User(db.Model):
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">User</span>(<span class="n">db</span>.<span class="n">Model</span>):
     ......
-    def to_json(self):
-        json_user = {
-            'id': self.id,
-            'username': self.username
+    <span class="n">def</span> <span class="n">to_json</span>(<span class="k">self</span>):
+        <span class="n">json_user</span> = {
+            <span class="s">&#39;id&#39;</span>: <span class="k">self</span>.<span class="n">id</span>,
+            <span class="s">&#39;username&#39;</span>: <span class="k">self</span>.<span class="n">username</span>
         }
-        return json_user
+        <span class="k">return</span> <span class="n">json_user</span>
     ......
-</code></pre>
+</pre></div>
+
+
 <h3>2. 接受json数据</h3>
 <p>flask需要接受客户端发送的json数据从而用于创建资源,
 所以需要在数据库Model中定义<code>from_json方法</code></p>
-<pre><code>class User(db.Model):
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">User</span>(<span class="n">db</span>.<span class="n">Model</span>):
     ......
-    @staticmethod
-    def from_json(json_data):
-        user = User(
-            username = json_data.get('username'),
-            password = json_data.get('password')
+    <span class="nv">@staticmethod</span>
+    <span class="n">def</span> <span class="n">from_json</span>(<span class="n">json_data</span>):
+        <span class="n">user</span> = <span class="n">User</span>(
+            <span class="n">username</span> = <span class="n">json_data</span>.<span class="n">get</span>(<span class="s">&#39;username&#39;</span>),
+            <span class="n">password</span> = <span class="n">json_data</span>.<span class="n">get</span>(<span class="s">&#39;password&#39;</span>)
         )
-        return user
+        <span class="k">return</span> <span class="n">user</span>
     ......
-</code></pre>
+</pre></div>
+
+
 <p>并在API代码中搭配<a href=""><code>request.get_json()</code></a>使用</p>
-<pre><code>/api/users.py
+<div class="codehilite"><pre><span></span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">users</span><span class="o">.</span><span class="n">py</span>
 
-from flask import request
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">request</span>
 
-@api.route('/users/', methods=['POST'])
-def create_user():
-    user = User.from_json(request.get_json())
-    db.session.add(user)
-    db.session.commit()
-</code></pre>
+<span class="nd">@api.route</span><span class="p">(</span><span class="s1">&#39;/users/&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">create_user</span><span class="p">():</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">get_json</span><span class="p">())</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+
+
 <h3>HTTP方法与操作对应</h3>
 <p>还是以用户资源为例:</p>
-<pre><code>@api.route('/users/', methods=['GET'])
+<div class="codehilite"><pre><span></span>@api.route(&#39;/users/&#39;, methods=[&#39;GET&#39;])
 def get_users():
-    """获取用户资源集合"""
+    &quot;&quot;&quot;获取用户资源集合&quot;&quot;&quot;
     pass
 
-@api.route('/users/&lt;int:id&gt;/', methods=['GET'])
+@api.route(&#39;/users/&lt;int:id&gt;/&#39;, methods=[&#39;GET&#39;])
 def get_id_users(id):
-    """获取特定id用户资源"""
+    &quot;&quot;&quot;获取特定id用户资源&quot;&quot;&quot;
     pass
 
-@api.route('/users/', methods=['GET', 'POST'])
+@api.route(&#39;/users/&#39;, methods=[&#39;GET&#39;, &#39;POST&#39;])
 def create_user():
-    """创建用户资源"""
+    &quot;&quot;&quot;创建用户资源&quot;&quot;&quot;
     pass
 
-@api.route('/users/&lt;int:id&gt;/', methods=['GET', 'PUT'])
+@api.route(&#39;/users/&lt;int:id&gt;/&#39;, methods=[&#39;GET&#39;, &#39;PUT&#39;])
 def update_id_user(id):
-    """更新特定id用户资源"""
+    &quot;&quot;&quot;更新特定id用户资源&quot;&quot;&quot;
     pass
 
-@api.route('/users/&lt;int:id&gt;/', methods=['GET', 'DELETE'])
+@api.route(&#39;/users/&lt;int:id&gt;/&#39;, methods=[&#39;GET&#39;, &#39;DELETE&#39;])
 def delete_id_user(id):
-    """删除特定id用户"""
+    &quot;&quot;&quot;删除特定id用户&quot;&quot;&quot;
     pass
-</code></pre>
+</pre></div>
+
+
 <h2>Q: 所以说flask编写API的核心思想就是<strong>以json的方式表示和接收资源并将相应操作映射到http方法上从而操纵资源</strong>, 是吗?</h2>
 <p><strong>A</strong>: 你这不是废话吗....</p>
         <div id="disqus_thread"></div>

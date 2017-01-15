@@ -1,0 +1,144 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>thinking in coroutines</title>
+    </head>
+    <body>
+        <h2>async, thinking in coroutines</h2>
+<p>async即异步, 我认为这是后端编程中最重要的一块. 后端编程中处处需要面对I/O密集型环境:网络请求、数据库查询、磁盘读写... 同步程序下, 一步阻塞, 意味着一个用户需要花很长时间等待连接的处理, 甚至连接处理超时报异常. <br/>
+于是, 传统的单进程、单线程变成了异步非阻塞的多进程、单进程多线程, 达到多个连接多个I/O请求并发执行的效果, 甚者, 利用多核实现并行.(由于Python GIL的存在, I/O密集型线程并不能利用多核) <br/>
+然而, TCP连接是大量的(至少我希望是:)), 后端服务被更多的用户使用, 服务器就需要支持处理更多并发连接. 不过服务器支持的最大并发连接数是有限的, 因为并发执行程序需要操作系统进行执行流的调度(进程、线程), 需要额外的内存开销保存暂时下CPU的执行流环境(多线程相比于多进程的优势就体现出来了, 因为线程只需要维护自己的执行堆栈, 共享一个进程的环境, 因此理论上可以建立更多的并发线程). 有人测了一下, 一台服务器创建1万个进程, 操作系统就崩溃了... 这就是著名的C10K问题. 当然, 如果你有很多钱, 可以多买几台服务器, 这也就不是问题了... <br/>
+如果有这么一种执行流, 可以不创建这么多进/线程, 甚至不需要操作系统进行直接调度(操作系统都不知道这个执行流的存在), 那么把连接装到这个执行流上CPU执行, 理论上就可以支持更多的连接了!<br/>
+这个神奇的执行流就是协程(coroutine) <br/>
+这里, 我不想说协程的特性以及协程的创建, Python2中的协程. 想了解的话请参考:</p>
+<ul>
+<li><a href="https://segmentfault.com/a/1190000000613814">一起阅读gevent源码</a></li>
+<li><a href="https://emptysqua.re/blog/links-for-how-python-coroutines-work/">Links for "How Python Coroutines Work"</a></li>
+</ul>
+<p>我想直接进入激动人心的部分: Python3中的asyncio, 使用魔法般的<code>async, await</code>!</p>
+<h2>async in real world: asyncio</h2>
+<p>asyncio是Python创始人Guido亲自操刀编写的一个标准库模块, 用来处理异步IO(名字起的很好呢!), 结合了Python3最新的async, await语法. <br/>
+asyncio中包含了很多概念</p>
+<p><img alt="" src="https://camo.githubusercontent.com/ed2b805efaaa8c82b8fe231d2c05948501f23993/687474703a2f2f37786a3433312e636f6d312e7a302e676c622e636c6f7564646e2e636f6d2f254535254231253846254535254239253935254535254246254142254537253835254137253230323031362d31312d3133253230254534254238253842254535253844253838352e32322e30342e706e67" /></p>
+<p>不过不要被这张图吓到(我就被吓过一次...). asyncio的核心模型其实很简洁: 单线程的event_loop(loop), 以及作为调度执行单元的协程(task)</p>
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21079184/4449d49a-bfc4-11e6-96f3-2c1040531195.png" /></p>
+<p>举个例子 test.py</p>
+<div class="codehilite"><pre><span></span>async def executor<span class="p">(</span>i<span class="p">)</span><span class="o">:</span> <span class="c1"># &lt;- it is a coroutine function that produce coroutine</span>
+    <span class="kp">print</span><span class="p">(</span>i<span class="p">,</span> datetime.datetime.now<span class="p">())</span>
+    await asyncio.sleep<span class="p">(</span>i<span class="p">)</span>  <span class="c1"># &lt;- it is a coroutine</span>
+    <span class="kr">return</span> i<span class="p">,</span> datetime.datetime.now<span class="p">()</span>
+
+<span class="kr">if</span> __name__ <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="o">:</span>
+    loop <span class="o">=</span> asyncio.get_event_loop<span class="p">()</span>
+    tasks <span class="o">=</span> <span class="p">[</span>loop.create_task<span class="p">(</span>executor<span class="p">(</span>i<span class="p">))</span> <span class="kr">for</span> i <span class="kr">in</span> <span class="kp">range</span><span class="p">(</span><span class="m">3</span><span class="p">)]</span>
+    <span class="kp">try</span><span class="o">:</span>
+        <span class="kp">print</span><span class="p">(</span><span class="s">&#39;----- excuting ------&#39;</span><span class="p">)</span>
+        loop.run_until_complete<span class="p">(</span>asyncio.wait<span class="p">(</span>tasks<span class="p">))</span>
+        <span class="kp">print</span><span class="p">(</span><span class="s">&#39;----- result ------&#39;</span><span class="p">)</span>
+        <span class="kr">for</span> task <span class="kr">in</span> tasks<span class="o">:</span>
+            <span class="kp">print</span><span class="p">(</span><span class="o">*</span>task.result<span class="p">())</span>
+    finally<span class="o">:</span>
+        loop.close<span class="p">()</span>
+</pre></div>
+
+
+<p>执行:</p>
+<div class="codehilite"><pre><span></span>$ <span class="nv">PYTHONASYNCIODEBUG</span><span class="o">=</span><span class="m">1</span> python3 test.py
+</pre></div>
+
+
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21079208/96cd85e4-bfc5-11e6-9d32-312404b1c446.png" /></p>
+<p>我们可以看到, 通过神奇的asyncio 这三个阻塞协程异步并发的执行. <br/>
+为什么asyncio具有如此魔力? 让我们再看看上面的asyncio调度模型图, 开脑洞联想一下单核CPU的多任务调度, 嗯, 越来越有意思了:) 魔力的核心在于并发! 
+可是上CPU执行的是线程啊, 难道线程还能分为更细的部分? 是的, 这就是协程, 所以协程也被叫做微线程. 当然了CPU以为自己每次调度的都是这个event loop线程, event loop把自己的执行权交给哪个部分(协程), 我们就不用管了, 只要一个await, 开启PYTHONASYNCIODEBUG, 我们就可以喝着咖啡, 看着协程执行了! 这些协程就是在异步并发的执行. 而且不像多线程抢着上CPU, 每个协程由event loop调度, event loop把执行权给谁, 谁就执行, 就像"卑鄙的我"(一部电影, 不是说我很卑鄙...)里面的小黄人们, 协同的干着各自的事情, 所以被称做协程(中华文化、博大精深...)! <br/>
+呼, 先舒一口气, 然而我还觉得不过瘾! asyncio到底是如何做到这一切的呢? 如何实现上图描述的调度模型的呢? 那就看源码吧! 结合前面举的test.py例子: <br/></p>
+<p>首先我们编写了一个协程函数executor用来创建协程, 调用asyncio.sleep(time)模拟阻塞(asyncio.sleep(time)是协程, 用await执行), 然后批量创建了3个协程, 通过loop.run_until_complete(asyncio.wait(tasks))执行.<br />
+loop.create_task(coroutine)会创建一个asyncio Task类的实例Task(coroutine, loop), Task类的部分源码如下:</p>
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Task</span>(<span class="n">futures</span>.<span class="n">Future</span>):
+    <span class="n">def</span> <span class="n">__init__</span>(<span class="k">self</span>, <span class="n">coro</span>, <span class="k">loop</span>=<span class="n">None</span>):
+        <span class="n">super</span>().<span class="n">__init__</span>(<span class="k">loop</span>=<span class="k">loop</span>)
+        ... ...
+        <span class="k">self</span>.<span class="n">_loop</span>.<span class="n">call_soon</span>(<span class="k">self</span>.<span class="n">_step</span>)
+
+    <span class="n">def</span> <span class="n">_step</span>(<span class="k">self</span>):
+        <span class="n">try:</span>
+            <span class="n">result</span> = <span class="k">next</span>(<span class="k">self</span>.<span class="n">_coro</span>)
+        <span class="n">except</span> <span class="n">StopIteration</span> <span class="k">as</span> <span class="n">exc:</span>
+            <span class="k">self</span>.<span class="n">set_result</span>(<span class="n">exc</span>.<span class="nb">value</span>)
+        <span class="n">except</span> <span class="n">BaseException</span> <span class="k">as</span> <span class="n">exc:</span>
+            <span class="k">self</span>.<span class="n">set_exception</span>(<span class="n">exc</span>)
+            <span class="n">raise</span>
+        <span class="n">else:</span>
+            ... ...
+            <span class="k">self</span>.<span class="n">_loop</span>.<span class="n">call_soon</span>(<span class="k">self</span>.<span class="n">_step</span>)
+</pre></div>
+
+
+<p>核心在于<code>self._loop.call_soon(self._step)</code>, 这就利用了协程一个神奇的特性: 惰性执行, 即保存当前执行上下文, 通过程序(比如next)一步步执行.(具体如何实现的我不清楚, 需要更深入看Python yield源码). 此时一个event_loop单线程, 每个协程在这个event_loop上执行自己step, event_loop不断的切换执行权进行调度, 所以我联想到了操作系统的多任务调度, 不过前者是协作, 后者是抢占; 前者通过一个代理人(event loop)和操作系统打交道, 后者则每只都在操作系统中拥有一席之地. <br/>
+所以:</p>
+<div class="codehilite"><pre><span></span><span class="k">try</span><span class="o">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">next</span><span class="o">(</span><span class="n">self</span><span class="o">.</span><span class="na">_coro</span><span class="o">)</span>
+<span class="n">except</span> <span class="n">StopIteration</span> <span class="k">as</span> <span class="n">exc</span><span class="o">;</span>
+    <span class="n">self</span><span class="o">.</span><span class="na">set_result</span><span class="o">(</span><span class="n">exc</span><span class="o">.</span><span class="na">value</span><span class="o">)</span>
+<span class="k">else</span><span class="o">:</span> 
+    <span class="n">slef</span><span class="o">.</span><span class="na">_loop</span><span class="o">.</span><span class="na">call_soon</span><span class="o">(</span><span class="n">self</span><span class="o">.</span><span class="na">_step</span><span class="o">)</span>
+</pre></div>
+
+
+<p>看到这里的时候, 一切都清晰无比了! </p>
+<h2>awesome asyncio</h2>
+<p>asyncio虽然2014年才正式进入Python3.4的标准库, 但是现在已经有了比较完整的生态,
+支持SSL、IPV6:
+<br/></p>
+<h3>文档</h3>
+<ul>
+<li><a href="https://docs.python.org/3/library/asyncio.html">asyncio</a></li>
+</ul>
+<h3>有用的模块</h3>
+<ul>
+<li>线程池 相对适合IO密集型场景</li>
+<li>进程池 相对适合CPU密集型场景</li>
+</ul>
+<h3>Web开发</h3>
+<ul>
+<li><a href="http://aiohttp.readthedocs.io/en/stable/">aiohttp</a> Asynchronous HTTP Client/Server</li>
+</ul>
+<h3>数据库</h3>
+<ul>
+<li><a href="https://github.com/aio-libs/aiopg">aiopg</a> aiopg is a library for accessing a PostgreSQL database from the asyncio</li>
+<li><a href="https://github.com/aio-libs/aiomysql">aiomysql</a> aiomysql is a library for accessing a MySQL database from the asyncio</li>
+</ul>
+<h3>加速asyncio的event loop</h3>
+<ul>
+<li><a href="https://github.com/MagicStack/uvloop">uvloop</a> Ultra fast implementation of asyncio event loop on top of libuv.</li>
+</ul>
+<h2>参考</h2>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=l4Nn-y9ktd4&amp;t=849s">thinking in coroutines</a></li>
+</ul>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

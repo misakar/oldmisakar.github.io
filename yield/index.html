@@ -1,0 +1,226 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>关于Python yield的一些常识</title>
+    </head>
+    <body>
+        <p><img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-10%20%E4%B8%8B%E5%8D%886.41.12.png" /></p>
+<h1>关于Python yield的一些常识</h1>
+<h2>1. yield关键字</h2>
+<p><a href="https://www.python.org/dev/peps/pep-0255/">PEP 255 -- Simple Generators</a>中引入了yield关键字:</p>
+<div class="codehilite"><pre><span></span>This PEP introduces the concept of generators to Python, as well
+as a new statement used in conjunction with them, the &quot;yield&quot;
+statement.
+</pre></div>
+
+
+<p>yield关键字用来实现生成器. <br/>
+什么是生成器呢? 生成器是一个<strong>可迭代</strong>的对象(实现了<code>__iter__</code>方法的对象).
+但相比于列表、元组等可迭代对象, 生成器的调用不会立即执行得到结果, 而是返回一个generator对象, 每次手动调用next执行生成器对象才能得到结果, 比如:</p>
+<div class="codehilite"><pre><span></span>In [23]: def generator():
+...:     print(&#39;--- start ---&#39;)
+...:     yield 1
+...:     print(&#39;--- end ---&#39;)
+...:     yield 2
+...:
+In [24]: gen = generator()
+
+In [25]: gen
+Out[25]: &lt;generator object generator at 0x110361bf8&gt;
+
+In [26]: next(gen)
+--- start ---
+Out[26]: 1
+
+In [27]: next(gen)
+--- end ---
+Out[27]: 2
+
+In [28]: next(gen)
+---------------------------------------------------------------------------
+StopIteration                             Traceback (most recent call last)
+&lt;ipython-input-28-8a6233884a6c&gt; in &lt;module&gt;()
+----&gt; 1 next(gen)
+
+StopIteration:
+</pre></div>
+
+
+<p>当生成器迭代结束时, 会raise一个StopIteration错误. <br/>
+可是, 这究竟有什么用呢? 把好好的一个可迭代对象的执行流拆的四分五裂? <br/></p>
+<p>需要注意到的是: <strong>生成器是一个函数</strong>, 函数就是一段执行流,
+也就是说通过yield, 我们可以把一个函数执行流划分成更细的执行流,
+而且可以通过next手动调度. 就算中间发生切换也没关系,
+生成器帮我们保存了执行时环境信息!(放在内存中). 
+<hr/>
+这就开始变得有意思了, 如果没有感觉到, 可以想想: 进程、线程、中断:) <br/>
+此外, 还可以用元组生成式创建生成器:</p>
+<div class="codehilite"><pre><span></span>In [29]: lt = [1, 2, 3, 4]
+
+In [30]: gen = (i for i in lt)
+
+In [31]: gen
+Out[31]: &lt;generator object &lt;genexpr&gt; at 0x110213938&gt;
+
+In [32]: next(gen)
+Out[32]: 1
+</pre></div>
+
+
+<p>这里的生成器gen更像是列表这样的容器, 不过相比于列表, 生成器占用的内存更少,
+因为不用把全部结果存放在内存中:) <br/>
+生成器还有一个有意思的特性<strong>send方法</strong>:</p>
+<div class="codehilite"><pre><span></span>In [34]: def double_result():
+    ...:     x = yield
+    ...:     yield x * 2
+    ...:
+
+In [35]: gen = double_result()
+
+In [36]: gen
+Out[36]: &lt;generator object double_result at 0x1103922b0&gt;
+
+In [37]: gen.send(None) # next(gen)
+
+In [38]: gen.send(4)
+Out[38]: 8
+</pre></div>
+
+
+<p>这里主线程调用send方法, 将执行流交给gen(double_result函数), 相当于执行next(gen), 并且传递了一个值给gen[x = yield]. send方法返回gen每次执行的结果. <br/>
+主线程和生成器执行流间的交互, 就是这么美妙、直接!;</p>
+<h2>2. yield关键字的用处</h2>
+<p>上面说的更多关注生成器本身的特性, 这一部分会介绍生成器(yield)的实际使用.</p>
+<h3>管道?</h3>
+<p>这个部分主要参考<a href="http://www.dabeaz.com/generators/Generators.pdf">Dabeaz的Generators pdf</a>. <br/>
+当我看到Dabeaz的Generators pdf, 看到里面所举的例子, 虽然都是生成器常规普通的用法, 但是将生成器作为中间对象, 忽略细节, 把生成器当作一个内存占用少的整体作为管道pipeline连接2个处理程序, 这种unix style还是让我十分惊讶, 用Dabeaz的话来说就是<strong>Think Big</strong> <br/>
+比如, 现在有一个GB级别的nginx log日志, 我们希望拿到全部ip(不重复)做进一步处理(统计、分析...). <br/>
+首先:</p>
+<ul>
+<li>打开日志文件, 将日志放到一个<strong>生成器</strong>中</li>
+<li>读取<strong>生成器</strong>中日志拿到ip放到一个<strong>生成器</strong>中</li>
+<li>利用集合对ip<strong>生成器</strong>进行去重, 得到所有ip集合</li>
+</ul>
+<p><code>nginx_log = open('big-nginx-access.log')
+ip_columns = (line.split()[0] for line in nginx_log)
+ip_set = set(ip_columns)</code></p>
+<p>执行的流程图:</p>
+<p><img alt="" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-11-10%20%E4%B8%8B%E5%8D%888.16.15.png" /> <br/></p>
+<h3>上下文管理器</h3>
+<p>在编程中我们经常会遇到这些情况:</p>
+<div class="codehilite"><pre><span></span>f = open()
+......
+f.close()
+
+lock.acquire()
+......
+lock.release()
+
+db.start_transaction()
+......
+db.commit()
+</pre></div>
+
+
+<p>一般我们会使用上下文管理器处理这些情况, 上下文管理器会帮我们自动关闭事务,
+我们只需要专注核心处理代码就行了. <br/>
+所谓上下文管理器就是实现了<code>__enter__</code>和<code>__exit__</code>方法的类,
+比如在一个上下文中创建并使用一个临时文件</p>
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">tempdir</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">__enter__</span>(<span class="k">self</span>):
+        <span class="k">self</span>.<span class="n">dirname</span> = <span class="n">tempfile</span>.<span class="n">mkdtemp</span>()
+        <span class="k">return</span> <span class="k">self</span>.<span class="n">dirname</span>
+
+    <span class="n">def</span> <span class="n">__exit__</span>(<span class="k">self</span>):
+        <span class="n">shutil</span>.<span class="n">rmtree</span>(<span class="k">self</span>.<span class="n">dirname</span>)
+</pre></div>
+
+
+<p>这样就可以使用</p>
+<div class="codehilite"><pre><span></span>with tempdir() as value:
+    # 核心代码!
+</pre></div>
+
+
+<p>Python还提供了一个<strong>@contextmanager装饰器</strong>方便我们编写上下文管理器</p>
+<div class="codehilite"><pre><span></span>@contextmanager
+def tempdir():
+    dirname = tempdir.mkdtemp()
+    try:
+        yield dirname
+    finally:
+        shutil.rmtree(dirname)
+</pre></div>
+
+
+<p>其实<code>@contextmanager</code>装饰器只是对上下文管理器类代码的重构, 重构的关键就是</p>
+<div class="codehilite"><pre><span></span>yield dirname
+</pre></div>
+
+
+<p>这里的yield! <br/>
+第一眼看到这个yield的时候, 我是懵b的, 这个yield到底是做什么的?
+这就需要看看contextmanager装饰器的实现了 <br/>
+contextmanager装饰器大致实现部分如下: <br/>
+装饰器部分:</p>
+<div class="codehilite"><pre><span></span>def contextmanager(func):
+    def run(*args, **kwargs):
+        return GeneratorCM(func(*args, **kwargs))
+    return func
+</pre></div>
+
+
+<p>再来看看GeneratorCM类的大致实现:</p>
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">GeneratorCM</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">__init__</span>(<span class="k">self</span>, <span class="n">gen</span>):
+        <span class="k">self</span>.<span class="n">gen</span> = <span class="n">gen</span>
+
+    <span class="n">def</span> <span class="n">__enter__</span>(<span class="k">self</span>):
+        <span class="k">return</span> <span class="k">next</span>(<span class="n">gen</span>)  <span class="c c-Singleline"># 执行生成器, 拿到dirname (value)</span>
+
+    <span class="n">def</span> <span class="n">__exit__</span>(<span class="k">self</span>, <span class="n">exc_type</span>):
+        <span class="n">try:</span>
+            <span class="k">if</span> <span class="n">exc_type</span> <span class="k">is</span> <span class="n">None:</span>
+                <span class="k">next</span>(<span class="k">self</span>.<span class="n">gen</span>)
+            <span class="n">else:</span>
+                <span class="k">self</span>.<span class="n">gen</span>.<span class="n">throw</span>(<span class="n">exc_type</span>)
+        <span class="n">except</span> <span class="n">StopIteration:</span> <span class="c c-Singleline"># 利用StopIteration退出上下文</span>
+            <span class="k">return</span> <span class="nb">True</span>
+</pre></div>
+
+
+<p>原来yield将被修饰的函数变成生成器,
+还记得之前说过的可以通过next实现生成器执行流更细粒的调度吗?
+这里把碰到yield之前的代码作为<code>__enter__</code>部分,
+把后面执行触发StopIteration错误的代码作为<code>__exit__</code>部分实现上下文管理器的退出.<br/>
+现在知道为什么要把一个函数执行流弄的四分五裂了吧 😄
+ <br/></p>
+<h2>今天先写这么多, 明天继续!</h2>
+<h3>生成器用于异步调度</h3>
+<h3>协程: 单线程并发</h3>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

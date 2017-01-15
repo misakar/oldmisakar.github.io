@@ -15,19 +15,21 @@
 <p><strong>模式:</strong><br/>
 context 1: class_1 <br/>
 context 2: class_2 <br/></p>
-<pre><code>class StrategyPattern(object):
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">StrategyPattern</span>(<span class="n">object</span>):
 
-    def __init__(self, class_1, class_2, context):
-        self.context = context
-        self.class_1 = class_1
-        self.class_2 = class_2
+    <span class="n">def</span> <span class="n">__init__</span>(<span class="k">self</span>, <span class="n">class_1</span>, <span class="n">class_2</span>, <span class="nb">context</span>):
+        <span class="k">self</span>.<span class="nb">context</span> = <span class="nb">context</span>
+        <span class="k">self</span>.<span class="n">class_1</span> = <span class="n">class_1</span>
+        <span class="k">self</span>.<span class="n">class_2</span> = <span class="n">class_2</span>
 
-    def operation(self):
-        if self.context == "context_for_class_1":
-            self.class_1.operation()
-        else:
-            self.class_2.operation()
-</code></pre>
+    <span class="n">def</span> <span class="n">operation</span>(<span class="k">self</span>):
+        <span class="k">if</span> <span class="k">self</span>.<span class="nb">context</span> == <span class="s">&quot;context_for_class_1&quot;</span>:
+            <span class="k">self</span>.<span class="n">class_1</span>.<span class="n">operation</span>()
+        <span class="n">else:</span>
+            <span class="k">self</span>.<span class="n">class_2</span>.<span class="n">operation</span>()
+</pre></div>
+
+
 <p>这个策略模式用于合并不同context中的两个类操作, 上层的策略模式类进行调度,
 避免了每个使用class_1或class_2的context进行重复判断.</p>
 <h2>适配器模式(Adapter Pattern)</h2>
@@ -35,22 +37,24 @@ context 2: class_2 <br/></p>
 适配器就是封装, 将可能多次使用的操作封装到一个适配器(封装)类中,
 避免下次使用时从头开始编写.</p>
 <p><strong>模式:</strong><br/></p>
-<pre><code>class Operation1(object):
-    def operation1(self):
-        pass
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Operation1</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">operation1</span>(<span class="k">self</span>):
+        <span class="nb">pass</span>
 
-class Operation2(object):
-    def operation2(self):
-        pass
+<span class="k">class</span> <span class="n">Operation2</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">operation2</span>(<span class="k">self</span>):
+        <span class="nb">pass</span>
 
-class AdapterClass(object):
-    def operation(self):
-        o1 = Operation1()
-        o2 = Operation2()
+<span class="k">class</span> <span class="n">AdapterClass</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">operation</span>(<span class="k">self</span>):
+        <span class="n">o1</span> = <span class="n">Operation1</span>()
+        <span class="n">o2</span> = <span class="n">Operation2</span>()
 
-        o1.operation1()
-        o2.operation2()
-</code></pre>
+        <span class="n">o1</span>.<span class="n">operation1</span>()
+        <span class="n">o2</span>.<span class="n">operation2</span>()
+</pre></div>
+
+
 <h2>工厂模式(Factory Pattern)</h2>
 <p><strong>场景:</strong><br/>
 顾名思义, 工厂模式用于生产实例对象,
@@ -61,32 +65,36 @@ Image: 图像按钮: <code>&lt;img&gt;&lt;/img&gt;</code> <br/>
 Input: 输入按钮: <code>&lt;input&gt;&lt;/input&gt;</code> <br/>
 Flash: flash按钮: <code>&lt;obj&gt;&lt;/obj&gt;</code> <br/>
 ButtonFactory: 按钮工厂类<br/></p>
-<pre><code>class Button(object):
-    html = ''
+<div class="codehilite"><pre><span></span>class Button(object):
+    html = &#39;&#39;
     def get_html(self):
         return self.html
 
 class Image(Button):
-    html = '&lt;img&gt;&lt;/img&gt;'
+    html = &#39;<span class="nt">&lt;img&gt;&lt;/img&gt;</span>&#39;
 
 class Input(Button):
-    html = '&lt;input&gt;&lt;/input&gt;'
+    html = &#39;<span class="nt">&lt;input&gt;&lt;/input&gt;</span>&#39;
 
 class Flash(Button):
-    html = '&lt;obj&gt;&lt;/obj&gt;'
+    html = &#39;<span class="nt">&lt;obj&gt;&lt;/obj&gt;</span>&#39;
 
 class ButtonFactory(object):
     def create_button(self, typ):
         target_class = typ.capitalize() # capitalize string
         # globals capitalize string -&gt; class
         return globals()[target_class]()
-</code></pre>
+</pre></div>
+
+
 <p>使用:</p>
-<pre><code>button_obj = ButtonFactory()
-button_type = ['image', 'input', 'flash']
+<div class="codehilite"><pre><span></span>button_obj = ButtonFactory()
+button_type = [&#39;image&#39;, &#39;input&#39;, &#39;flash&#39;]
 for button in button_type:
     button_obj.create_button(button)
-</code></pre>
+</pre></div>
+
+
 <p>十分简介、清楚.</p>
 <h2>装饰器模式</h2>
 <p><strong>场景:</strong><br/>
@@ -94,16 +102,18 @@ for button in button_type:
 <p><strong>模式:</strong><br/>
 比如做一个麦当朱汉堡🍔 <br/>
 这是原料:</p>
-<pre><code>class Meet(object):
-    def __repr__(self):
-        return "我是肉"
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Meet</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">__repr__</span>(<span class="k">self</span>):
+        <span class="k">return</span> <span class="s">&quot;我是肉&quot;</span>
 
-class Bread(object):
-    def __repr__(self):
-        return "我是面包"
-</code></pre>
+<span class="k">class</span> <span class="n">Bread</span>(<span class="n">object</span>):
+    <span class="n">def</span> <span class="n">__repr__</span>(<span class="k">self</span>):
+        <span class="k">return</span> <span class="s">&quot;我是面包&quot;</span>
+</pre></div>
+
+
 <p>开始生产:</p>
-<pre><code>def produce_meet():
+<div class="codehilite"><pre><span></span>def produce_meet():
     meet = Meet()
     return meet.__repr__()
 
@@ -115,7 +125,9 @@ def produce(produce_meet):
         produce_meet()
         bread2.__repr__()
     return decorator
-</code></pre>
+</pre></div>
+
+
 <p>个人很喜欢装饰器模式, 装饰器模式是代码重用的最优雅境界, 特别是结合Python的语法糖@使用.</p>
 <h2>单例模式</h2>
 <p><strong>场景:</strong><br/>

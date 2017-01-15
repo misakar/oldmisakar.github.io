@@ -9,54 +9,64 @@
         <h1>常见shell需求总结</h1>
 <p>这两天把自己的一个Python项目用shell改写, 这里记录项目中遇到的一些基本需求</p>
 <h2>1. shell 函数</h2>
-<pre><code>function func_name()
+<div class="codehilite"><pre><span></span>function func_name()
 {
     func_body
 }
 
 func_name  # 调用
-</code></pre>
+</pre></div>
+
+
 <p>function 关键字可以省略 <br/>
 <strong>函数接受参数</strong> <br/></p>
-<pre><code>function hello()
+<div class="codehilite"><pre><span></span>function hello()
 {
-    echo "Hello $1"
+    echo &quot;Hello $1&quot;
 }
 
-hello "neo1218"  # 调用
-</code></pre>
+hello &quot;neo1218&quot;  # 调用
+</pre></div>
+
+
 <p>$0 代表函数本身, $1-9 依顺序代表参数, 10个以上需要 ${10} 调用。<br/>
 函数的返回值只能是0~255
 <br/>
 <strong>常用函数</strong> <br/>
 1. <strong><em>log 函数</em></strong> <br/></p>
-<pre><code>function log()
+<div class="codehilite"><pre><span></span>function log()
 {
-    printf " \033[36m%10s\033[0m: \033[90m%s\033[0m\n" $1 $2
+    printf &quot; \033[36m%10s\033[0m: \033[90m%s\033[0m\n&quot; $1 $2
 }
-</code></pre>
+</pre></div>
+
+
 <p>这里和Linux终端特殊颜色字符使用, 使log更"好看" <br/>
 2. <strong><em>error_exit 函数</em></strong> <br/></p>
-<pre><code>function error_exit()
+<div class="codehilite"><pre><span></span>function error_exit()
 {
     echo $ 2&gt;&amp;1
     exit 1
 }
-</code></pre>
+</pre></div>
+
+
 <p>exit 表示退出状态, exit 0 表示成功退出, 非0表示异常退出.<br/>
 这里还有一个很有意思的地方: 2&gt;&amp;1 <br/>
 这里的1是<code>stdout</code> , 2是<code>stderr</code>, 2&gt;&amp;1 就是将标准错误重定向到标准输出,
 用于错误处理。 <br/>
 3. <strong><em>help 系列函数</em></strong> <br/>
 即显示信息的函数<br/></p>
-<pre><code>function display_msg()
+<div class="codehilite"><pre><span></span>function display_msg()
 {
     cat &lt;&lt;-EOF
     msg msg msg
     msg msg msg
 EOF
 }
-</code></pre>
+</pre></div>
+
+
 <p>这样就可以很好的在终端显示信息啦 <br/>
 4. <strong><em>其他</em></strong> </br>
 shell函数还有一个很有意思的特性, 关于shell的作用域,
@@ -89,29 +99,33 @@ ${array[${#array[@]}]}
 <code>if test $# -eq 0</code></p>
 <h2>4. case 语句</h2>
 <p>shell 支持case语句 </br></p>
-<pre><code>case $var in
-    xxx)  do sth ;;
-    xx|xxx) do sth ;;
-esac
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="x">case </span><span class="p">$</span><span class="nv">var</span><span class="x"> in</span>
+<span class="x">    xxx)  do sth ;;</span>
+<span class="x">    xx|xxx) do sth ;;</span>
+<span class="x">esac</span>
+</pre></div>
+
+
 <h2>5. 处理用户参数</h2>
 <p>由于c是命令, 所以处理用户参数就是必须的, 这里给个总结模版</p>
-<pre><code>if test $# -eq 0; then
-    do sth
-else
-    while test $# -ne 0; do
-        case $args in
-            case1)
-                do sth ;;
-            -h|--help)
-                display_help ;;
-            -v|--version)
-                show_version ;;
-        esac
-        shift
-    done
-fi
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="x">if test </span><span class="p">$</span><span class="err">#</span><span class="x"> -eq 0; then</span>
+<span class="x">    do sth</span>
+<span class="x">else</span>
+<span class="x">    while test </span><span class="p">$</span><span class="err">#</span><span class="x"> -ne 0; do</span>
+<span class="x">        case </span><span class="p">$</span><span class="nv">args</span><span class="x"> in</span>
+<span class="x">            case1)</span>
+<span class="x">                do sth ;;</span>
+<span class="x">            -h|--help)</span>
+<span class="x">                display_help ;;</span>
+<span class="x">            -v|--version)</span>
+<span class="x">                show_version ;;</span>
+<span class="x">        esac</span>
+<span class="x">        shift</span>
+<span class="x">    done</span>
+<span class="x">fi</span>
+</pre></div>
+
+
 <h2>6. 其他</h2>
 <ol>
 <li><strong>$?</strong> 用于获取最近的返回值 <br/></li>

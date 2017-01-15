@@ -25,10 +25,12 @@
 <code>__version__</code>匹配<code>__version__</code>, <code>\s+</code>匹配=前的空格, <code>=</code>匹配=,
 <code>\s+</code>匹配等号右侧的空格, <code>(.*)</code>匹配版本号也就是<code>'0.11.2-dev'</code>. <br/></p>
 <p>然后从<code>__init__.py</code>中读取源, 就可以匹配()中的版本号了</p>
-<pre><code>with open('flask/__init__.py', 'rb') as f:
+<div class="codehilite"><pre><span></span>with open(&#39;flask/__init__.py&#39;, &#39;rb&#39;) as f:
     version = str(ast.literal_eval(_version_re.search(
-        f.read().decode('utf-8')).group(1)))
-</code></pre>
+        f.read().decode(&#39;utf-8&#39;)).group(1)))
+</pre></div>
+
+
 <p>这里使用<code>_version_re.search</code>搜索匹配, 并返回group(1).
 search时需要把utf-8编码的文件转化为unicode. <br/>
 ast.literal_eval的功能和eval类似,

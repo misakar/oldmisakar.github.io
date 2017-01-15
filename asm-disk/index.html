@@ -1,0 +1,144 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <title>用汇编读写硬盘</title>
+    </head>
+    <body>
+        <h1>用汇编读写硬盘</h1>
+<p>直接用汇编读写硬盘, 很cool, 但是有点麻烦, 在此做个简单的纪录📝 </p>
+<h2>硬盘适配器端口及功能分配</h2>
+<p>在这篇博客<a href="https://neo1218.github.io/disk/">呃,硬盘</a>里</p>
+<h2>读写步骤</h2>
+<h3>step0: 备份寄存器</h3>
+<p>硬盘读写会用到eax, cx寄存器, 需要提前备份</p>
+<div class="codehilite"><pre><span></span>mov esi, eax
+mov di, cx
+</pre></div>
+
+
+<h3>step1: 选择通道, 往该通道的sector count寄存器中写入待操作的扇区数</h3>
+<ul>
+<li>Primary: ---&gt; 0x1F2</li>
+<li>Secondary: -&gt; 0x172</li>
+</ul>
+<p>比如选择主通道(ps:通道其实就是IDE插槽, 一个通道上可以挂2块盘(主盘、从盘))</p>
+<div class="codehilite"><pre><span></span>mov dx, 0x1f2
+mov al, cl      ; cl 事先放好待操作的扇区数
+out dx, al
+</pre></div>
+
+
+<h3>step2: 设置lba地址, 往该通道上的三个lba寄存器中写入扇区起始地址的低24位</h3>
+<div class="codehilite"><pre><span></span>mov eax, esi    ; 恢复eax, eax事先放好扇区起始地址
+
+; lbalow
+mov dx, 0x1f3
+out dx, al
+
+; lbamid
+mov cl, 8
+shr eax, cl     ; 右移8位, 截取相对高位
+mov dx, 0x1f4
+out dx, al
+
+; lbahigh
+shr eax, cl
+mov dx, 0x1f5
+out dx, al
+</pre></div>
+
+
+<h3>step3: 往device寄存器中写入lba地址的24~27位, 并置第6位为1(LBA模式), 选择操作的硬盘(master or slave)</h3>
+<p>上一下device寄存器的结构:</p>
+<div class="codehilite"><pre><span></span>device寄存器  (位)   0     1      2     3    4     5     6      7
+              (开关) -LBA地址的第23~27位- 主/从盘  1  寻址模式  1
+</pre></div>
+
+
+<p>代码:</p>
+<div class="codehilite"><pre><span></span>; lba address
+shr eax, cl
+or al, 0xe0     ; 11100000 -&gt; 高3位全部置为1
+mov dx, 0x1f6
+out dx, al
+</pre></div>
+
+
+<h3>step4: 往通道的command寄存器写入操作命令</h3>
+<p>写入操作命令时需要检测状态寄存器, 判断当前硬盘是否繁忙(有无命令执行). 状态寄存器结构:</p>
+<div class="codehilite"><pre><span></span>status寄存器  (位)   0  1  2  3  4  5  6      7
+              (开关) ERR     DRQ      DRDY   BSY
+              (为1表示有错误 错误信息见error端口)
+</pre></div>
+
+
+<p>代码:</p>
+<div class="codehilite"><pre><span></span>mov dx, 0x1f7
+mov al, 0x20    ; 01000000
+out dx, al      ; 写入命令, 状态寄存器就&quot;变成了&quot;命令寄存器...(weird, right?)
+                ; 硬盘开始工作
+</pre></div>
+
+
+<h3>step5: 读取硬盘中的数据</h3>
+<div class="codehilite"><pre><span></span><span class="m">.</span>not_ready<span class="o">:</span>
+    nop             <span class="p">;</span> 空操作<span class="p">,</span> 类似sleep
+    <span class="kr">in</span> al<span class="p">,</span> dx       <span class="p">;</span> 读取状态寄存器<span class="p">(</span>无需重新初始化dx寄存器<span class="p">)</span>
+    and al<span class="p">,</span> <span class="mh">0x88</span>    <span class="p">;</span> <span class="m">10001000</span> 检测BSY和DRQ
+    cmp al<span class="p">,</span> <span class="mh">0x08</span>    <span class="p">;</span> <span class="m">00001000</span> 检测BSY位
+    jnz <span class="m">.</span>not_ready  <span class="p">;</span> 判断结果是否为<span class="m">0</span><span class="p">,</span> 得出此时的硬盘工作状态
+
+<span class="p">;</span> 从<span class="mh">0x1f0</span>端口<span class="p">(</span>primary通道的data寄存器<span class="p">)</span>读数据
+    mov ax<span class="p">,</span> di      <span class="p">;</span> di<span class="o">&lt;-</span>cx<span class="o">&lt;-</span>待读入的扇区数
+    mov dx<span class="p">,</span> <span class="m">256</span>     <span class="p">;</span> <span class="p">(</span><span class="m">512</span><span class="p">)</span><span class="o">/</span><span class="m">2</span><span class="o">&lt;-</span>一次<span class="kp">in</span>读取<span class="m">2</span>个字节<span class="o">:</span> 每个扇区<span class="kp">in</span>操作的次数
+    mul dx          <span class="p">;</span> 乘法操作<span class="p">,</span> dx是操作数<span class="p">,</span> 另一个操作数隐含在ax或al寄存器中
+                    <span class="p">;</span> <span class="o">-&gt;</span> <span class="p">[</span>待读入的扇区数<span class="o">*</span>每个扇区<span class="kp">in</span>操作的次数<span class="p">]</span> <span class="o">=</span> <span class="m">4</span><span class="o">*</span><span class="m">256</span> <span class="o">=</span> <span class="m">1024</span>
+                    <span class="p">;</span> <span class="o">-&gt;</span> <span class="m">16</span>位乘法<span class="m">32</span>位乘积的低<span class="m">16</span>位在ax寄存器<span class="p">,</span> 高<span class="m">16</span>位在dx寄存器
+    mov cx<span class="p">,</span> ax      <span class="p">;</span> cx作为loop循环计数
+                    <span class="p">;</span> <span class="o">-&gt;</span> ax<span class="o">:</span> <span class="m">1024</span><span class="p">,</span> <span class="m">1024</span>次循环<span class="p">,</span>每次<span class="m">2</span>个字节<span class="p">,</span>正好<span class="m">2048</span><span class="o">-&gt;</span><span class="m">4</span>个扇区<span class="p">,</span>能够完全读取mbr
+
+    mov dx<span class="p">,</span> <span class="mh">0x1f0</span>   <span class="p">;</span> 访问<span class="mh">0x1f0</span>寄存器读取数据
+
+  <span class="m">.</span>go_on_read<span class="o">:</span>
+    <span class="kr">in</span> ax<span class="p">,</span> dx       <span class="p">;</span> 从Primary通道主盘读数据
+    mov <span class="p">[</span>bx<span class="p">],</span> ax    <span class="p">;</span> 把加载器写入内存<span class="o">:</span> bx存放加载器所在的内存地址<span class="o">:</span> <span class="mh">0x900</span>
+    add bx<span class="p">,</span> <span class="m">2</span>       <span class="p">;</span> 移动<span class="m">2</span>个字节
+    loop <span class="m">.</span>go_on_read<span class="p">;</span> 循环
+    ret             <span class="p">;</span> 函数返回<span class="p">,</span> <span class="kp">call</span>函数的时候会将返回地址压入栈中
+</pre></div>
+
+
+<p>检测状态寄存器(读操作)BSY位, 循环读取[之前传入的扇区数]个扇区</p>
+<div class="codehilite"><pre><span></span>mov dx, 0x1f0
+in ax, dx
+mov [bx], ax
+</pre></div>
+
+
+<p>这3步实现从硬盘中读出数据并加载到内存. uiharu的loader、kernel.bin、kernel image都是这样读写的!</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

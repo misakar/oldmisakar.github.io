@@ -10,93 +10,101 @@
 <h3>1. 验证字段与密码的存储</h3>
 <p>权限管理的基础就是验证字段(用户名or邮箱...)以及密码,
 所以首先需要考虑验证字段和密码的存储。(这里使用flask-sqlalchemy作为ORM)</p>
-<pre><code>model:User
+<div class="codehilite"><pre><span></span><span class="n">model</span><span class="o">:</span><span class="n">User</span>
 
-class User(db.Model):
-    """用户类"""
-    id = db.Column(db.Integer, primary_key=True)
-    # 用户名字符串存储即可
-    username = db.Column(db.String(164))
-    # 密码一定要注意
-    # 密码不允许在数据库中明文存储
-    password_hash = db.Column(db.String(164))
-    ......
+<span class="kd">class</span> <span class="n">User</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">Model</span><span class="o">):</span>
+    <span class="s2">&quot;&quot;&quot;用户类&quot;&quot;&quot;</span>
+    <span class="n">id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">Column</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">Integer</span><span class="o">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="n">True</span><span class="o">)</span>
+    <span class="err">#</span> <span class="err">用户名字符串存储即可</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">Column</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">String</span><span class="o">(</span><span class="mi">164</span><span class="o">))</span>
+    <span class="err">#</span> <span class="err">密码一定要注意</span>
+    <span class="err">#</span> <span class="err">密码不允许在数据库中明文存储</span>
+    <span class="n">password_hash</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">Column</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">String</span><span class="o">(</span><span class="mi">164</span><span class="o">))</span>
+    <span class="o">......</span>
 
-    # 所以需要对用户传入的明文密码进行加密
-    @property
-    def password(self):
-        """
-        password属性函数
-        不允许直接读取原始值
-        """
-        return "密码不是可读形式!"
+    <span class="err">#</span> <span class="err">所以需要对用户传入的明文密码进行加密</span>
+    <span class="err">@</span><span class="n">property</span>
+    <span class="n">def</span> <span class="n">password</span><span class="o">(</span><span class="n">self</span><span class="o">):</span>
+        <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        password属性函数</span>
+<span class="s2">        不允许直接读取原始值</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;密码不是可读形式!&quot;</span>
 
-    @password.setter
-    def password(self, password):
-        """
-        设置密码hash值
-        """
-        self.password_hash = werkzeug.security.generate_password_hash(password)
+    <span class="err">@</span><span class="n">password</span><span class="o">.</span><span class="na">setter</span>
+    <span class="n">def</span> <span class="n">password</span><span class="o">(</span><span class="n">self</span><span class="o">,</span> <span class="n">password</span><span class="o">):</span>
+        <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        设置密码hash值</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="n">self</span><span class="o">.</span><span class="na">password_hash</span> <span class="o">=</span> <span class="n">werkzeug</span><span class="o">.</span><span class="na">security</span><span class="o">.</span><span class="na">generate_password_hash</span><span class="o">(</span><span class="n">password</span><span class="o">)</span>
 
-    def verify_password(self, password):
-        """
-        将用户输入的密码明文与数据库比对
-        """
-        return werkzeug.security.check_password_hash(password)
-</code></pre>
+    <span class="n">def</span> <span class="n">verify_password</span><span class="o">(</span><span class="n">self</span><span class="o">,</span> <span class="n">password</span><span class="o">):</span>
+        <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        将用户输入的密码明文与数据库比对</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">werkzeug</span><span class="o">.</span><span class="na">security</span><span class="o">.</span><span class="na">check_password_hash</span><span class="o">(</span><span class="n">password</span><span class="o">)</span>
+</pre></div>
+
+
 <h3>2. 用户权限与角色的设置</h3>
 <p>我一般将用户权限设置为16进制的值, 而用户角色则是用户权限(16进制的值)的<strong>异或(|)</strong>运算,
 比如我设置以下2个权限:</p>
-<pre><code>class Permission:
-    """
-    权限表
-    """
-    COMMENT = 0x01  # 评论
-    MODERATE_COMMENT = 0x02  # 移除评论
-</code></pre>
-<p>那么可设置如下角色, 并建立和User的<strong>多对一</strong>关系:</p>
-<pre><code>class Role(db.Model):
-    """
-    用户角色
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    # 该用户角色名称
-    name = db.Column(db.String(164))
-    # 该用户角色是否为默认
-    default = db.Column(db.Boolean, default=False, index=True)
-    # 该用户角色对应的权限
-    permissions = db.Column(db.Integer)
-    # 该用户角色和用户的关系
-    # 角色为该用户角色的所有用户
-    users = db.relationship('User', backref='role', lazy='dynamic')
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Permission:</span>
+    <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    权限表</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="n">COMMENT</span> = <span class="mh">0x01</span>  <span class="c c-Singleline"># 评论</span>
+    <span class="n">MODERATE_COMMENT</span> = <span class="mh">0x02</span>  <span class="c c-Singleline"># 移除评论</span>
+</pre></div>
 
-    @staticmethod
-    def insert_roles():
-        """
-        创建用户角色
-        """
-        roles = {
-            # 定义了两个用户角色(User, Admin)
-            'User': (Permission.COMMENT, True),
-            'Admin': (Permission.COMMENT |
-                      Permission.MODERATE_COMMENT, False)
+
+<p>那么可设置如下角色, 并建立和User的<strong>多对一</strong>关系:</p>
+<div class="codehilite"><pre><span></span><span class="k">class</span> <span class="nb">Role</span>(<span class="n">db</span>.<span class="n">Model</span>):
+    <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    用户角色</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="n">id</span> = <span class="n">db</span>.<span class="n">Column</span>(<span class="n">db</span>.<span class="n">Integer</span>, <span class="n">primary_key</span>=<span class="nb">True</span>)
+    <span class="c c-Singleline"># 该用户角色名称</span>
+    <span class="nb">name</span> = <span class="n">db</span>.<span class="n">Column</span>(<span class="n">db</span>.<span class="n">String</span>(<span class="mi">164</span>))
+    <span class="c c-Singleline"># 该用户角色是否为默认</span>
+    <span class="k">default</span> = <span class="n">db</span>.<span class="n">Column</span>(<span class="n">db</span>.<span class="n">Boolean</span>, <span class="k">default</span>=<span class="nb">False</span>, <span class="nb">index</span>=<span class="nb">True</span>)
+    <span class="c c-Singleline"># 该用户角色对应的权限</span>
+    <span class="n">permissions</span> = <span class="n">db</span>.<span class="n">Column</span>(<span class="n">db</span>.<span class="n">Integer</span>)
+    <span class="c c-Singleline"># 该用户角色和用户的关系</span>
+    <span class="c c-Singleline"># 角色为该用户角色的所有用户</span>
+    <span class="n">users</span> = <span class="n">db</span>.<span class="n">relationship</span>(<span class="s">&#39;User&#39;</span>, <span class="n">backref</span>=<span class="s">&#39;role&#39;</span>, <span class="nb">lazy</span>=<span class="s">&#39;dynamic&#39;</span>)
+
+    <span class="nv">@staticmethod</span>
+    <span class="n">def</span> <span class="n">insert_roles</span>():
+        <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        创建用户角色</span>
+<span class="s">        &quot;&quot;&quot;</span>
+        <span class="n">roles</span> = {
+            <span class="c c-Singleline"># 定义了两个用户角色(User, Admin)</span>
+            <span class="s">&#39;User&#39;</span>: (<span class="n">Permission</span>.<span class="n">COMMENT</span>, <span class="nb">True</span>),
+            <span class="s">&#39;Admin&#39;</span>: (<span class="n">Permission</span>.<span class="n">COMMENT</span> |
+                      <span class="n">Permission</span>.<span class="n">MODERATE_COMMENT</span>, <span class="nb">False</span>)
         }
-        for r in roles:
-            role = Role.query.filter_by(name=r).first()
-            if role is None:
-                # 如果用户角色没有创建: 创建用户角色
-                role = Role(name=r)
-            role.permissions = roles[r][0]
-            role.default = roles[r][1]
-            db.session.add(role)
-            db.session.commit()
-</code></pre>
+        <span class="k">for</span> <span class="n">r</span> <span class="n">in</span> <span class="n">roles:</span>
+            <span class="k">role</span> = <span class="nb">Role</span>.<span class="n">query</span>.<span class="n">filter_by</span>(<span class="nb">name</span>=<span class="n">r</span>).<span class="nb">first</span>()
+            <span class="k">if</span> <span class="k">role</span> <span class="k">is</span> <span class="n">None:</span>
+                <span class="c c-Singleline"># 如果用户角色没有创建: 创建用户角色</span>
+                <span class="k">role</span> = <span class="nb">Role</span>(<span class="nb">name</span>=<span class="n">r</span>)
+            <span class="k">role</span>.<span class="n">permissions</span> = <span class="n">roles</span>[<span class="n">r</span>][<span class="mi">0</span>]
+            <span class="k">role</span>.<span class="k">default</span> = <span class="n">roles</span>[<span class="n">r</span>][<span class="mi">1</span>]
+            <span class="n">db</span>.<span class="n">session</span>.<span class="n">add</span>(<span class="k">role</span>)
+            <span class="n">db</span>.<span class="n">session</span>.<span class="n">commit</span>()
+</pre></div>
+
+
 <p>现在只需在User里创建一个指向用户角色的外键即可</p>
-<pre><code>calss User(db.Model):
+<div class="codehilite"><pre><span></span>calss User(db.Model):
     ......
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    role_id = db.Column(db.Integer, db.ForeignKey(&#39;role.id&#39;))
     ......
-</code></pre>
+</pre></div>
+
+
 <h2>flask权限在具体场景中的应用</h2>
 <p>应用在具体场景, 使用相关扩展就不可避免了</p>
 <h3>1. 处理登录(flask-login)</h3>
@@ -106,28 +114,32 @@ class User(db.Model):
 这里就不具体说明<a href="https://flask-login.readthedocs.org/en/latest/">如何集成flask-login了</a>,主要说如何使用</code>flask-login</code><br/></p>
 <h4>用户登录</h4>
 <p>使用flask-login提供的<code>login_user</code>, <code>current_user</code></p>
-<pre><code>@auth.route('/login/', methods=["POST", "GET"])
+<div class="codehilite"><pre><span></span>@auth.route(&#39;/login/&#39;, methods=[&quot;POST&quot;, &quot;GET&quot;])
 def login():
-    """用户登录"""
+    &quot;&quot;&quot;用户登录&quot;&quot;&quot;
     next = get_redirect_target()
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is not None and user.verify_password:
             login_user(user)
-            return redirect_back('default redirect back url', id=current_user.id)
-        flash("用户名或密码错误!")
-    return render_template("login.html", form=form, next=next)
-</code></pre>
+            return redirect_back(&#39;default redirect back url&#39;, id=current_user.id)
+        flash(&quot;用户名或密码错误!&quot;)
+    return render_template(&quot;login.html&quot;, form=form, next=next)
+</pre></div>
+
+
 <h4>用户登出</h4>
 <p>使用flask-login提供的<code>logout_user</code></p>
-<pre><code>@login_required
-@auth.route('/logout/')
+<div class="codehilite"><pre><span></span>@login_required
+@auth.route(&#39;/logout/&#39;)
 def logout():
-    """用户登出"""
+    &quot;&quot;&quot;用户登出&quot;&quot;&quot;
     logout_user()
-    return redirect("重定向路由")
-</code></pre>
+    return redirect(&quot;重定向路由&quot;)
+</pre></div>
+
+
 <h3>2. 处理HTTPBasicAuth(flask-httpauth)</h3>
 <p><a href="http://flask-httpauth.readthedocs.org/en/latest/">flask-httpauth</a> 可以帮助我们处理一些基本的权限管理,
 同flask-login一样, flask-httpauth 也提供了一个<strong>login_required</strong>装饰器,
@@ -139,17 +151,19 @@ def logout():
 <p>token是用户信息(一般是用户id,
 具有唯一标识作用)的标识。对用户id进行签名加密(我一般使用itsdangerous模块),
 例如:</p>
-<pre><code>from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">itsdangerous</span> <span class="kn">import</span> <span class="n">TimedJSONWebSignatureSerializer</span> <span class="k">as</span> <span class="n">Serializer</span>
 
-# 此函数为User类的成员函数
-def generate_auth_token(self):
-    s = Serializer(
-        current_app.config['SECRET_KEY'],  # 密钥很重要
-        expiration  # Token的寿命
-    )
-    # 用获取的签名加密用户id信息
-    return s.dumps({'id': self.id})
-</code></pre>
+<span class="c1"># 此函数为User类的成员函数</span>
+<span class="k">def</span> <span class="nf">generate_auth_token</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Serializer</span><span class="p">(</span>
+        <span class="n">current_app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;SECRET_KEY&#39;</span><span class="p">],</span>  <span class="c1"># 密钥很重要</span>
+        <span class="n">expiration</span>  <span class="c1"># Token的寿命</span>
+    <span class="p">)</span>
+    <span class="c1"># 用获取的签名加密用户id信息</span>
+    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">})</span>
+</pre></div>
+
+
 <h5>为什么需要token</h5>
 <p>token 一般使用在API的场景中, 此时<strong>客户端和服务器端是分离的</strong>,
 数据信息通过API进行传递, 他人很容易就可以拦截API并获取验证头部的<strong>authorization</strong>字段,
@@ -161,51 +175,59 @@ def generate_auth_token(self):
 也会因为token的寿命而使破坏性大大降低。</p>
 <h5>token的使用: 发送token</h5>
 <p>token需放在<strong>Authorization</strong>头部, 采用如下形式发送:</p>
-<pre><code>"Basic token"
-</code></pre>
+<div class="codehilite"><pre><span></span>&quot;Basic token&quot;
+</pre></div>
+
+
 <h5>token的使用: 解析token</h5>
 <p>依然采用<strong>itsdangerous</strong>模块, 这里<strong>密钥</strong>就很重要了,
 只有与加密相同的密钥才可以解析token。</p>
-<pre><code># User类的一个静态成员函数
+<div class="codehilite"><pre><span></span># User类的一个静态成员函数
 @staticmethod
 def verify_auth_token(token):
     # 获取签名
-    s = Serializer(current_app.config["SECRET_KEY"])
+    s = Serializer(current_app.config[&quot;SECRET_KEY&quot;])
     try:
         data = s.loads(token)  # 用签名解析token
     except:
         return None
     # 返回该token标识的用户
-    return User.query.filter_by(id=data['id'])
-</code></pre>
+    return User.query.filter_by(id=data[&#39;id&#39;])
+</pre></div>
+
+
 <h6>基于token的权限管理</h6>
 <p>这里主要是区别普通用户和管理员用户, 因为有些特定的操作是只有管理员可以进行的。<br/></p>
 <p>1.在User类里添加管理员判断函数 <br/></p>
-<pre><code>def can(self, permission):
+<div class="codehilite"><pre><span></span>def can(self, permission):
     # 判断用户是否具备某权限
     return self.role is not None and (self.role.permissions &amp; permissions) = permissions
 
 def is_adminstractor(self):
     # 判断用户是否具备管理员权限
     return self.can(Permission.COMMENT | Permission.MODERATE_COMMENT)
-</code></pre>
-<p>2.创建<strong>管理员权限判断装饰器</strong><br/></p>
-<pre><code>from functools import wraps
-from flask import request, g
+</pre></div>
 
-def admin_required(f):
-    @wraps(f)
-    def decorator(*args, **kwargs):
-        token_header = request.headers.get('authorization')
-        token = token_header[6:]  # 去掉格式中的Basic
-        if token:
-            g.current_user = User.verify_auth_token(token)
-            if g.current_user.is_adminstractor():
-                return f(*args, **kwargs)
-            else:
-                abort(403)
-    return decorator
-</code></pre>
+
+<p>2.创建<strong>管理员权限判断装饰器</strong><br/></p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">request</span><span class="p">,</span> <span class="n">g</span>
+
+<span class="k">def</span> <span class="nf">admin_required</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">token_header</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;authorization&#39;</span><span class="p">)</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">token_header</span><span class="p">[</span><span class="mi">6</span><span class="p">:]</span>  <span class="c1"># 去掉格式中的Basic</span>
+        <span class="k">if</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">current_user</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">verify_auth_token</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_adminstractor</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">abort</span><span class="p">(</span><span class="mi">403</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">decorator</span>
+</pre></div>
+
+
 <p>然后就可以使用<strong>admin_required</strong>装饰器进行权限管理了,
 这里有个坑提一下就是<strong>flask-httpauth</strong>会自己添加Basic,
 所以使用该扩展的地方就不必考虑token格式的问题了。</p>

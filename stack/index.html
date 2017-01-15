@@ -11,16 +11,18 @@
 <p>无论是设计一个软件、算法还是简简单单的一个类, 我们首先要构思它的API. API是这个计算机代码集合对外的接口, 我想把它变成的样子.
 优雅的API，意味着可复用, 可复用则是计算机文化的基础, 因为可复用, 现在的每个人都站在几秒前巨人的肩膀上.</p>
 <h3>背包</h3>
-<pre><code>public class Bag&lt;Item&gt; implements Iterable&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class Bag&lt;Item&gt; implements Iterable&lt;Item&gt;
 {
             Bag()              // 创建一个空背包
     void    add(Item item)     // 向背包中添加一个元素
     boolean isEmpty()          // 背包是否为空
     int     size()             // 背包中的元素数量
 }
-</code></pre>
+</pre></div>
+
+
 <h3>队列</h3>
-<pre><code>public class Queue&lt;Item&gt; implements Iterable&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class Queue&lt;Item&gt; implements Iterable&lt;Item&gt;
 {
             Queue()            // 创建空队列
     void    enqueue(Item item) // 添加一个元素
@@ -28,9 +30,11 @@
     boolean isEmpty()          // 队列是否为空
     int     size()             // 队列中的元素数量
 }
-</code></pre>
+</pre></div>
+
+
 <h3>栈</h3>
-<pre><code>public class Stack&lt;Item&gt; implements Iterable&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class Stack&lt;Item&gt; implements Iterable&lt;Item&gt;
 {
             Stack()             // 创建一个空栈
     void    push(Item item)     // 压入一个元素
@@ -38,7 +42,9 @@
     boolean isEmpty()           // 栈是否为空
     int     size()              // 栈中的元素数量
 }
-</code></pre>
+</pre></div>
+
+
 <h2>范型</h2>
 <p>范型, 顾名思义:"广泛之类型", 这里所指类型的广泛是在我们编写代码时, 只需要编写一次范型模版, 便可应用到多种类型之上. 以上面的背包实现为例:</p>
 <ul>
@@ -69,10 +75,12 @@
 <p>可迭代就是可以迭代, 可以遍历, 比如Python中,
 可以使用<code>for..in</code>遍历的对象就是可迭代对象. Java也类似,
 只不过换成了<strong>foreach</strong>语句</p>
-<pre><code>Queue&lt;Transaction&gt; collection = new Queue&lt;Transaction&gt;();
+<div class="codehilite"><pre><span></span>Queue&lt;Transaction&gt; collection = new Queue&lt;Transaction&gt;();
 for (Transaction t: collection)
 { 操作 }
-</code></pre>
+</pre></div>
+
+
 <p>和C++ STL中的遍历语句一样, 十分优雅方便.
 <hr/></p>
 <p>设计完API, 来具体介绍一下这几个数据类型的作用,
@@ -81,37 +89,39 @@ for (Transaction t: collection)
 <p>顾名思义, 背包是用来装东西的, 背包关心的是装入数据的特点而不是装入数据的顺序.
 背包当然是"可迭代的", 如此才能在背包中找到我们要的数据.
 比如下面这个例子计算背包中数据的平均数和标准差:</p>
-<pre><code>public class Stats
-{
-    public static void main(String[] args)
-    {
-        Bag&lt;Double&gt; numbers = new Bag&lt;Double&gt;();
-        while (!StdIn.isEmpty())
-            numbers.add(StdIn.readDouble());
-        int N = numbers.size();
+<div class="codehilite"><pre><span></span><span class="nt">public</span> <span class="nt">class</span> <span class="nt">Stats</span>
+<span class="p">{</span>
+    <span class="n">public</span> <span class="nb">static</span> <span class="n">void</span> <span class="n">main</span><span class="p">(</span><span class="n">String</span><span class="cp">[]</span> <span class="n">args</span><span class="p">)</span>
+    <span class="err">{</span>
+        <span class="n">Bag</span><span class="o">&lt;</span><span class="n">Double</span><span class="o">&gt;</span> <span class="n">numbers</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Bag</span><span class="o">&lt;</span><span class="n">Double</span><span class="o">&gt;</span><span class="p">();</span>
+        <span class="n">while</span> <span class="p">(</span><span class="o">!</span><span class="n">StdIn</span><span class="o">.</span><span class="n">isEmpty</span><span class="p">())</span>
+            <span class="n">numbers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">StdIn</span><span class="o">.</span><span class="n">readDouble</span><span class="p">());</span>
+        <span class="n">int</span> <span class="n">N</span> <span class="o">=</span> <span class="n">numbers</span><span class="o">.</span><span class="nb">size</span><span class="p">();</span>
 
-        double sum = 0.0;
-        for (double x : numbers)
-            sum += x;
-        double mean = sum/N;  // 平均数
+        <span class="nb">double</span> <span class="n">sum</span> <span class="o">=</span> <span class="m">0</span><span class="o">.</span><span class="m">0</span><span class="p">;</span>
+        <span class="n">for</span> <span class="p">(</span><span class="nb">double</span> <span class="n">x</span> <span class="o">:</span> <span class="n">numbers</span><span class="p">)</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+        <span class="nb">double</span> <span class="n">mean</span> <span class="o">=</span> <span class="n">sum</span><span class="o">/</span><span class="n">N</span><span class="p">;</span>  <span class="o">//</span> <span class="err">平均数</span>
 
-        sum = 0.0;
-        for (double x : numbers)
-            sum += (x - mean)*(x - mean);
-        double std = Math.sqrt(sum/(N-1));  // 标准差
+        <span class="n">sum</span> <span class="o">=</span> <span class="m">0</span><span class="o">.</span><span class="m">0</span><span class="p">;</span>
+        <span class="n">for</span> <span class="p">(</span><span class="nb">double</span> <span class="n">x</span> <span class="o">:</span> <span class="n">numbers</span><span class="p">)</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">);</span>
+        <span class="nb">double</span> <span class="n">std</span> <span class="o">=</span> <span class="n">Math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sum</span><span class="o">/</span><span class="p">(</span><span class="n">N</span><span class="m">-1</span><span class="p">));</span>  <span class="o">//</span> <span class="err">标准差</span>
 
-        StdOut.printf("Mean: %.2f\n", mean);
-        StdOut.printf("Std: %.2f\n", std);
-    }
-}
-</code></pre>
+        <span class="n">StdOut</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;Mean: %.2f\n&quot;</span><span class="o">,</span> <span class="n">mean</span><span class="p">);</span>
+        <span class="n">StdOut</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;Std: %.2f\n&quot;</span><span class="o">,</span> <span class="n">std</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="err">}</span>
+</pre></div>
+
+
 <h2>队列(FIFO)</h2>
 <p>队列是一种(先进先出FIFO策略)的集合类型, 排队就是一种队列, 倡导公平,
 等待时间最长的人最先享受服务, 当然公平不是平等...
 如果服务的处理效率太慢可是会引起不满的...一条长队意味着阻塞. <br/>
 这个例子通过队列的FIFO的特性, 将文件中的数据顺序写入数组中,
 而且文件的一切细节于之无关:</p>
-<pre><code>public static int[] readInts(String name)
+<div class="codehilite"><pre><span></span>public static int[] readInts(String name)
 {
     In in = new In(name);
     Queue&lt;Integer&gt; q = new Queue&lt;Integer&gt;();
@@ -124,7 +134,9 @@ for (Transaction t: collection)
         a[i] = q.dequeue();  // FIFO: 顺序保持不变
     return a;
 }
-</code></pre>
+</pre></div>
+
+
 <h2>栈(FILO)</h2>
 <p>栈是一种实现后进先出策略的集合结构, 栈的应用十分广泛: 比如阅读电子邮件,
 最新的未读邮件在最上的位置; 有的软件的核心就是栈: 比如Flask,
@@ -153,7 +165,7 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
 <li>操作数栈中最后一个栈顶操作数就是该算术表达式的运算结果</li>
 </ol>
 <p>代码实现:</p>
-<pre><code>public class Evaluate
+<div class="codehilite"><pre><span></span>public class Evaluate
 {
     public static void main(String[] args)
     {
@@ -162,19 +174,19 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
         while (!StdIn.isEmpty())
         {
             String s = StdIn.readString();
-            if      (s.equals("("))                 ;
-            else if (s.equals("+"))      ops.push(s);
-            else if (s.equals("-"))      ops.push(s);
-            else if (s.equals("*"))      ops.push(s);
-            else if (s.equals("/"))      ops.push(s);
-            else if (s.equals(")"))
+            if      (s.equals(&quot;(&quot;))                 ;
+            else if (s.equals(&quot;+&quot;))      ops.push(s);
+            else if (s.equals(&quot;-&quot;))      ops.push(s);
+            else if (s.equals(&quot;*&quot;))      ops.push(s);
+            else if (s.equals(&quot;/&quot;))      ops.push(s);
+            else if (s.equals(&quot;)&quot;))
             {
                 String op = ops.pop();  // 弹出操作符
                 double v  = vals.pop(); // 弹出操作数
-                if      (op.equals("+")) v += vals.pop();  // 利用java基础计算特性
-                else if (op.equals("-")) v -= vals.pop();  // 双目运算符
-                else if (op.equals("*")) v *= vals.pop();
-                else if (op.equals("\")) v \= vals.pop();
+                if      (op.equals(&quot;+&quot;)) v += vals.pop();  // 利用java基础计算特性
+                else if (op.equals(&quot;-&quot;)) v -= vals.pop();  // 双目运算符
+                else if (op.equals(&quot;*&quot;)) v *= vals.pop();
+                else if (op.equals(&quot;\&quot;)) v \= vals.pop();
                 vals.push(v);
             }
             else vals.push(Double.parseDouble(s));
@@ -182,18 +194,22 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
         StdOut.println(vals.pop());
     }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>范型实现</h2>
 <p>如何用范型实现这些基础的数据结构呢? 比如用范型实现栈,
 关键是用类型占位符(Item)去替代特定的类型. 下面的代码用范型实现了一个定容栈:</p>
-<pre><code>API: public class FixedCapacityStack&lt;Item&gt;
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="n">API</span><span class="o">:</span> <span class="kd">public</span> <span class="kd">class</span> <span class="n">FixedCapacityStack</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+</pre></div>
+
+
 <p>Item意味着我们编写代码时不需要考虑面向的具体类型(很多情况下我们并不知道实际的类型是什么).
 只要我们能在创建栈时提供具体的数据类型, 我们就可以用这个栈处理任意数据类型.
 当然我们提供的类型需要是引用类型, Java范型可以通过自动装拆箱处理原始类型.
 <br>
 范型定容栈实现代码:</p>
-<pre><code>public class FixedCapacityStack&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public class FixedCapacityStack&lt;Item&gt;
 {
     private Item[] a;  // 范型数组定义
     private int N;
@@ -206,7 +222,9 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
     public Item pop()
     { return a[--N]; }
 }
-</code></pre>
+</pre></div>
+
+
 <h2>应用</h2>
 <h3>动态数组</h3>
 <p>范型数组初始化 a = (Item[]) new Object[cap]; 大小是固定的cap;
@@ -215,7 +233,7 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
 这显然是对空间的浪费. 所以我们需要实现动态数组,
 在添加数据的时候自动进行缩减和扩容.</p>
 <p>1.首先需要实现一个resize方法将栈移动到另一个大小不同的数组中:</p>
-<pre><code>private void resize(int max)
+<div class="codehilite"><pre><span></span>private void resize(int max)
 {
     // 将大小为N &lt; max的栈移动到一个新的大小为max的数组中
     Item[] temp = (Item[]) new Object[max];
@@ -223,46 +241,56 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
         temp[i] = a[i];
     a = temp;  // 扩容
 }
-</code></pre>
+</pre></div>
+
+
 <p>2.push的时候需要考虑当栈大小和数组大小相同时进行扩容, 扩容数组大小为原来的2倍</p>
-<pre><code>public void push(Item item)
+<div class="codehilite"><pre><span></span>public void push(Item item)
 {
     if (N == a.length) resize(2*a.length);
     a[N++] = item;
 }
-</code></pre>
+</pre></div>
+
+
 <p>3.pop的时候需要考虑当栈大小小于数组长度的1/4时, 缩减数组的大小为原来的一半</p>
-<pre><code>public void pop(Item item)
+<div class="codehilite"><pre><span></span>public void pop(Item item)
 {
     Item item = a[--N];
     if (N &gt; 0 &amp;&amp; N == a.length*1/4) resize(a.length*1/2);
     return item;
 }
-</code></pre>
+</pre></div>
+
+
 <p>注意resize操作是需要时间开销的, 临界条件定为1/4,
 a数组减半后还可以进行item的push, 减少resize操作的次数</p>
 <h3>对象游离</h3>
 <p>pop一个元素后, 这个元素其实还存在于a数组中,
 成为了一个不需要再被引用的孤儿(很可怜),即[对象游离], 所以我们需要帮助这个孤儿..., 方法很简答,
 设值为null, Java会自行进行回收. 修改pop方法:</p>
-<pre><code>public void pop(Item item)
+<div class="codehilite"><pre><span></span>public void pop(Item item)
 {
     Item item = a[--N];
     a[N] = null;  // 设值为null, 避免对象游离
     if (N &gt; 0 &amp;&amp; N == a.length*1/4)  resize(a.length*1/2);
     return item;
 }
-</code></pre>
+</pre></div>
+
+
 <h2>实现迭代</h2>
 <p>先前提到过, 背包、队列、栈可以通过foreach语句进行遍历,
 foreach语句实际上是while语句的语法糖:</p>
-<pre><code>Iterator&lt;Item&gt; i = collection.iterator();
+<div class="codehilite"><pre><span></span>Iterator&lt;Item&gt; i = collection.iterator();
 while (i.hasNext())
 {
     Item s = i.next();
     StdOut.println(s);
 }
-</code></pre>
+</pre></div>
+
+
 <p>从这个"原始"的语句中, 我们可以一窥实现迭代的条件</p>
 <ol>
 <li>集合数据类型必须实现一个iterator方法(迭代器), 并返回一个Iterator对象</li>
@@ -271,30 +299,36 @@ while (i.hasNext())
 <p>其实Python中的for..i迭代也是如此, 需要实现<strong>iter</strong>魔法方法,
 和next方法进行遍历,Python通过继承Object元类实现这些方法, Java不允许多继承,
 所以使用接口实现特定的迭代方法:</p>
-<pre><code>public interface Iterable&lt;Item&gt;
+<div class="codehilite"><pre><span></span>public interface Iterable&lt;Item&gt;
 {
     // java官方Iterable接口
     // 实现了一个iterator迭代器
     Iterator&lt;Item&gt; iterator();
 }
-</code></pre>
+</pre></div>
+
+
 <p>我们也可以实现自己的迭代器接口, 比如我们希望实现一个栈迭代器,
 遵循LIFO对栈数组进行逆序遍历</p>
-<pre><code>// 逆序数组迭代器
+<div class="codehilite"><pre><span></span>// 逆序数组迭代器
 public Iterator&lt;Item&gt; iterator()
 { return new ReverseArrayIterator(); }
-</code></pre>
+</pre></div>
+
+
 <p>数组迭代器接口</p>
-<pre><code>// import java.util.Iterator
-public interface Iterator&lt;Item&gt;
-{
-    boolean hasNext();
-    Item next();
-    void remove();
-}
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="o">//</span> <span class="kn">import</span> <span class="nn">java.util.Iterator</span>
+<span class="n">public</span> <span class="n">interface</span> <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">boolean</span> <span class="n">hasNext</span><span class="p">();</span>
+    <span class="n">Item</span> <span class="nb">next</span><span class="p">();</span>
+    <span class="n">void</span> <span class="n">remove</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <p>逆序数组迭代器实现(通过实现官方接口, 重载方法)</p>
-<pre><code>private class ReverseArrayIterator implements Iterator&lt;Item&gt;
+<div class="codehilite"><pre><span></span>private class ReverseArrayIterator implements Iterator&lt;Item&gt;
 {
     private int i = N;
 
@@ -302,48 +336,52 @@ public interface Iterator&lt;Item&gt;
     public Item next()        { return a[--i]; }
     public void remove        {                } // 避免遍历时进行删除操作
 }
-</code></pre>
+</pre></div>
+
+
 <p>这里逆序数组迭代器的实现时写在Stack类中的, 即嵌套类实现,
 这样就可以再ReverseArrayIterator中获取N和数组a了
 <br/>
 下压栈实现(遍历栈、动态调整数组大小)</p>
-<pre><code>import java.util.iterator
-public class ResizingArrayStack&lt;Item&gt; implements Iterable&lt;Item&gt;
-{
-    private Item[] a = (Item[]) new Object[1];  // 初始化null
-    private int N = 0;
-    public boolean isEmpty()  { return N == 0; }
-    public int size()         { return N;      }
-    private void resize(int max)
-    {
-        Item[] temp = (Item[]) new Object[max];
-        for (int i = 0; i &lt; N; i++)
-            temp[i] = a[i];
-        a = temp;
-    }
-    public void push(Item item)
-    {
-        if (N == a.length) resize(a.length*2);
-        a[N++] = item;
-    }
-    public Item pop()
-    {
-        Item item = a[--N];
-        a[N] = null;
-        if (N &gt; 0 &amp;&amp; N == a.length*1/4) resize(a.length*1/2);
-        return item;
-    }
-    public Iterator&lt;Item&gt; iterator()
-        { return new ReverseArrayIterator(); }
-    private class ReverseArrayIterator implements Iterator&lt;Item&gt;
-    {
-        private int i = N;
-        public boolean hasNext()  { return i &gt; 0;  }
-        public Item next()        { return a[--i]; }
-        public void remove()      {                }
-    } 
-}
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">java.util.iterator</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ResizingArrayStack</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span> <span class="n">implements</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">private</span> <span class="n">Item</span><span class="p">[]</span> <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">Item</span><span class="p">[])</span> <span class="n">new</span> <span class="n">Object</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>  <span class="o">//</span> <span class="err">初始化</span><span class="n">null</span>
+    <span class="n">private</span> <span class="nb">int</span> <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">public</span> <span class="n">boolean</span> <span class="n">isEmpty</span><span class="p">()</span>  <span class="p">{</span> <span class="k">return</span> <span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span> <span class="p">}</span>
+    <span class="n">public</span> <span class="nb">int</span> <span class="n">size</span><span class="p">()</span>         <span class="p">{</span> <span class="k">return</span> <span class="n">N</span><span class="p">;</span>      <span class="p">}</span>
+    <span class="n">private</span> <span class="n">void</span> <span class="n">resize</span><span class="p">(</span><span class="nb">int</span> <span class="nb">max</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">Item</span><span class="p">[]</span> <span class="n">temp</span> <span class="o">=</span> <span class="p">(</span><span class="n">Item</span><span class="p">[])</span> <span class="n">new</span> <span class="n">Object</span><span class="p">[</span><span class="nb">max</span><span class="p">];</span>
+        <span class="k">for</span> <span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+            <span class="n">temp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">temp</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="n">void</span> <span class="n">push</span><span class="p">(</span><span class="n">Item</span> <span class="n">item</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">N</span> <span class="o">==</span> <span class="n">a</span><span class="o">.</span><span class="n">length</span><span class="p">)</span> <span class="n">resize</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">length</span><span class="o">*</span><span class="mi">2</span><span class="p">);</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">N</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="n">Item</span> <span class="n">pop</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">Item</span> <span class="n">item</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="o">--</span><span class="n">N</span><span class="p">];</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">N</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">N</span> <span class="o">==</span> <span class="n">a</span><span class="o">.</span><span class="n">length</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span> <span class="n">resize</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">length</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">item</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">public</span> <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span> <span class="n">iterator</span><span class="p">()</span>
+        <span class="p">{</span> <span class="k">return</span> <span class="n">new</span> <span class="n">ReverseArrayIterator</span><span class="p">();</span> <span class="p">}</span>
+    <span class="n">private</span> <span class="k">class</span> <span class="nc">ReverseArrayIterator</span> <span class="n">implements</span> <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="o">&gt;</span>
+    <span class="p">{</span>
+        <span class="n">private</span> <span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">N</span><span class="p">;</span>
+        <span class="n">public</span> <span class="n">boolean</span> <span class="n">hasNext</span><span class="p">()</span>  <span class="p">{</span> <span class="k">return</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span>  <span class="p">}</span>
+        <span class="n">public</span> <span class="n">Item</span> <span class="nb">next</span><span class="p">()</span>        <span class="p">{</span> <span class="k">return</span> <span class="n">a</span><span class="p">[</span><span class="o">--</span><span class="n">i</span><span class="p">];</span> <span class="p">}</span>
+        <span class="n">public</span> <span class="n">void</span> <span class="n">remove</span><span class="p">()</span>      <span class="p">{</span>                <span class="p">}</span>
+    <span class="p">}</span> 
+<span class="p">}</span>
+</pre></div>
+
+
 <p>这样我们就实现了一个可以动态改变数组大小且可迭代的栈数据结构:)</p>
         <div id="disqus_thread"></div>
         <script>

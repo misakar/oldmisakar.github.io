@@ -27,35 +27,45 @@
 <p>1.生成配置文件<br/>
 <code>echo_supervisord_conf &gt; /etc/supervisord.conf</code></p>
 <p>2.修改配置文件<br/></p>
-<pre><code>[include]
-files = /etc/supervisord.d/*.ini
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="k">[include]</span>
+<span class="na">files</span> <span class="o">=</span> <span class="s">/etc/supervisord.d/*.ini</span>
+</pre></div>
+
+
 <p>3.创建进程配置<br/>
 在/etc/supervisord.d/目录下创建进程配置即可(ini格式), 给个样例配置:</p>
-<pre><code>[program:FlaskApp]
-command=gunicorn -w 4 -b 127.0.0.1:5000 wsgi:app
-directory=/FlaskApp/
-startsecs=0
-stopwaitsecs=0
-autostart=true
-autorestart=true
-stdout_logfile=/tmp/FlaskApp.log
-stderr_logfile=/tmp/FlaskApp.err
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="k">[program:FlaskApp]</span>
+<span class="na">command</span><span class="o">=</span><span class="s">gunicorn -w 4 -b 127.0.0.1:5000 wsgi:app</span>
+<span class="na">directory</span><span class="o">=</span><span class="s">/FlaskApp/</span>
+<span class="na">startsecs</span><span class="o">=</span><span class="s">0</span>
+<span class="na">stopwaitsecs</span><span class="o">=</span><span class="s">0</span>
+<span class="na">autostart</span><span class="o">=</span><span class="s">true</span>
+<span class="na">autorestart</span><span class="o">=</span><span class="s">true</span>
+<span class="na">stdout_logfile</span><span class="o">=</span><span class="s">/tmp/FlaskApp.log</span>
+<span class="na">stderr_logfile</span><span class="o">=</span><span class="s">/tmp/FlaskApp.err</span>
+</pre></div>
+
+
 <h3>4.简洁的API<br/></h3>
 <p>supervisor的命令分为两大部分: supervisord, supervisorctl <br/></p>
 <p>supervisord用于启动supervisor进程</p>
-<pre><code>$ supervisord
+<div class="codehilite"><pre><span></span>$ supervisord
 $ supervisord -c /path/to/config
-</code></pre>
+</pre></div>
+
+
 <p>supervisorctl用于管理supervisor管理的进程(及ini配置的program)</p>
-<pre><code>$ supervisorctl start FlaskApp
+<div class="codehilite"><pre><span></span>$ supervisorctl start FlaskApp
 $ supervisorctl stop FlaskApp
-$ supervisorctl status FlaskApp # 查看状态
-</code></pre>
+$ supervisorctl status FlaskApp <span class="c1"># 查看状态</span>
+</pre></div>
+
+
 <p>supervisorctl还有一个重要的作用: 重读supervisord配置(重启supervisor)</p>
-<pre><code>$ supervisorctl reload
-</code></pre>
+<div class="codehilite"><pre><span></span>$ supervisorctl reload
+</pre></div>
+
+
 <h3>5.权限保障</h3>
 <p>supervisor还提供了权限控制<br/>
 <img alt="conf" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-05-23%20%E4%B8%8B%E5%8D%883.48.24.png" /></p>
@@ -71,15 +81,17 @@ $ supervisorctl status FlaskApp # 查看状态
 celery作为后台daemon进程运行呢?<br/>
 <a href="http://docs.celeryproject.org/en/latest/tutorials/daemonizing.html">官方文档给的方法</a>, 反正我配了半天没弄好. <br/>
 使用supervisord, 只需要配置autorestart和autostart为True即可. 样例配置:</p>
-<pre><code>[program:celeryd]
-command=celery worker -A app.celery --loglevel=info
-stdout_logfile=/tmp/celeryd.log
-stderr_logfile=/tmp/celeryd.err
-autostart=true
-autorestart=true
-startsecs=10
-stopwaitsecs=600
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="k">[program:celeryd]</span>
+<span class="na">command</span><span class="o">=</span><span class="s">celery worker -A app.celery --loglevel=info</span>
+<span class="na">stdout_logfile</span><span class="o">=</span><span class="s">/tmp/celeryd.log</span>
+<span class="na">stderr_logfile</span><span class="o">=</span><span class="s">/tmp/celeryd.err</span>
+<span class="na">autostart</span><span class="o">=</span><span class="s">true</span>
+<span class="na">autorestart</span><span class="o">=</span><span class="s">true</span>
+<span class="na">startsecs</span><span class="o">=</span><span class="s">10</span>
+<span class="na">stopwaitsecs</span><span class="o">=</span><span class="s">600</span>
+</pre></div>
+
+
 <p><br/>
 进程管理是后端自动化中的重要一环, 也是粒度比较细的一环, 如何在docker容器中使用进程管理工具呢?</p>
         <div id="disqus_thread"></div>

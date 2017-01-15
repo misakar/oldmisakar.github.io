@@ -89,7 +89,7 @@ merge和rebase(变基)都可以用于分支的合并。merge会把两个分支�
 <h1>我总结的git工作流</h1>
 <p>git工作流其实就是一套使用git进行版本控制的流程规范, 有利于团队的项目协作。<br/>
 结合木犀的产品开发, 总结的git工作流(场景如下)</p>
-<pre><code>1. 创建远程git仓库(github服务)
+<div class="codehilite"><pre><span></span>1. 创建远程git仓库(github服务)
 2. 确定主分支(一般为master分支)
     : 主分支用于发布**正式版本**(可以打上tag)
     : 主分支确定后一定不要更换
@@ -108,7 +108,9 @@ merge和rebase(变基)都可以用于分支的合并。merge会把两个分支�
     : bug修复后合并到develop和master两个分支
 6. 其他
     : 预发布分支: 进行AB test
-</code></pre>
+</pre></div>
+
+
 <p>Git工作时的注意事项 <br/>
 1. 删除操作时尽量使用<code>git revert</code>
 2. <code>rebase虽好, 可不要贪杯哦</code>, 绝大多数情况下merge就足够了

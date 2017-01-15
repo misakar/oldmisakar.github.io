@@ -18,11 +18,15 @@ print, print。而pudb提供了图形化界面, 可以设置断点、侧边栏�
 <img alt="pudb" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-04-23%20%E4%B8%8B%E5%8D%885.52.04.png" /></p>
 <h2>1. 使用pudb调试</h2>
 <p>在你需要调试的程序中, 加入下面2行代码</p>
-<pre><code>from pudb import set_trace; set_trace()
-</code></pre>
+<div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">pudb</span> <span class="kn">import</span> <span class="n">set_trace</span><span class="p">;</span> <span class="n">set_trace</span><span class="p">()</span>
+</pre></div>
+
+
 <p>然后</p>
-<pre><code>$ pudb bp.py
-</code></pre>
+<div class="codehilite"><pre><span></span>$ pudb bp.py
+</pre></div>
+
+
 <p>pudb需要打开某些文件, 所以如果出现permission错误需要 <code>sudo pudb bp.py</code><br/></p>
 <h2>2. 基本调试</h2>
 <p>基本调试很简单(我用的比较肤浅...), n就是next, 旁边的Variables实时显示变量变化,
