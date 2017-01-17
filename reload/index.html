@@ -7,109 +7,132 @@
     </head>
     <body>
         <h2>设定编码的惯例</h2>
+
 <p>当设定python文件编码时</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="nb">reload</span><span class="p">(</span><span class="n">sys</span><span class="p">)</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">setdefaultencoding</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
 </pre></div>
 
-
 <p>三行搞定，妈妈再也不用担心汉字乱码了！😄</p>
+
 <h2>然而：问题来了</h2>
+
 <p>几个月后的一天，我的一个朋友问我：为什么要 reload(sys) ? 😔</p>
+
 <h2>SO: Why reload(sys)</h2>
+
 <h3>1. sys</h3>
+
 <div class="codehilite"><pre><span></span>sys 是一个python模块，包含系统对应的功能，比如通过argv获取运行时命令行参数
 </pre></div>
 
-
 <p>具体见http://www.cnblogs.com/diege/archive/2012/10/03/2710776.html <br/></p>
+
 <h3>2. setdefaultencoding 函数</h3>
+
 <p>setdefaultencoding 是sys模块提供的一个函数，用来<strong>修改默认编码</strong><br/></p>
+
 <h3>3. python 加载模块的过程</h3>
+
 <div class="codehilite"><pre><span></span>运行解释器 -&gt; 加载库文件(ex: site.py) -&gt; 加载模块(ex: sys)
 </pre></div>
 
-
 <h3>4. python reload 函数</h3>
+
 <div class="codehilite"><pre><span></span>reload 是python内置函数，用于在当前运行时重新加载模块，不会改变先前文件中的模块状态
 </pre></div>
 
-
 <h3>5. reload(sys)</h3>
+
 <p>如果我们尝试运行</p>
+
 <div class="codehilite"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sys</span>
 <span class="o">&gt;&gt;</span> <span class="n">sys</span><span class="o">.</span><span class="n">setdefaultencoding</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
 <span class="ne">AttributeError</span><span class="p">:</span> <span class="s1">&#39;module&#39;</span> <span class="nb">object</span> <span class="n">has</span> <span class="n">no</span> <span class="n">attribute</span> <span class="s1">&#39;setdefaultencoding&#39;</span>
 </pre></div>
 
-
 <p>发现并没有<code>setdefaultencoding</code>函数, reload以后就有了, 这又是怎么回事呢？<br/>
 当我们导入加载 sys 模块时首先会加载 site.py(/usr/lib/python2.7), 看一下 site.py 的源码：
 <img alt="源码" src="http://7xj431.com1.z0.glb.clouddn.com/屏幕快照%202015-09-08%20下午11.17.14.png" /><br/></p>
+
 <p>原来setdefaultencoding函数被site.py删掉啦！至于为什么要删，注释里写了：使用户无法在初始化后改变编码<br/>
 而 reload(sys) 则重载了sys模块, 没有了site.py的调用，所以可以使用<code>setdefaultencoding</code> 函数改变编码了<br/></p>
+
 <h2>但是他们说: <code>reload(sys) is evil</code></h2>
+
 <p><img alt="2016-12-01 7 53 16" src="https://cloud.githubusercontent.com/assets/10671733/20793036/0771783c-b800-11e6-9c8a-6b3077d53914.png" /> <br/>
 作为一个使用了<code>reload(sys), sys.setdefaultencoding</code>2年的人(因为我把它写到mana里面了...), 这句话一直萦绕在我的脑海中. 为什么evil, 我用了这么长时间, 可是并没有什么问题啊? <br/>
 终于在一个夜晚, 我想, 我大概明白了...<br/></p>
+
 <h3>1.字符串和字节串</h3>
+
 <p>Python2中有2类字符串类型, 一类是<code>unicode</code>也就是<code>字符串</code>, 一类是<code>str</code>也就是<code>字节串</code>.<br/>
 简单点... 字节串是字符串的实际存储方式, 比如unicode是一个编码集, utf-8则是unicode的具体实现方式, 也就是计算机中二进制的存储方式. 具体可以参考这2篇文章: <br/></p>
+
 <ul>
 <li><a href="http://www.ruanyifeng.com/blog/2007/10/ascii_unicode_and_utf-8.html">字符编码笔记：ASCII，Unicode和UTF-8</a></li>
 <li><a href="http://www.regexlab.com/zh/encoding.htm">字符，字节和编码</a></li>
 </ul>
+
 <p><br/></p>
+
 <h3>2. Python2默认编码是Ascii</h3>
+
 <p>这一点很重要, Python第一个公开发行版是1991年, 而unicode是1991年才产生的, 所以Python采用了历史悠久的Ascii作为默认编码. <br/>
 Python将字节串decode为字符串的时候就会使用ascii编码, 然而ascii编码只能表示256个字符, 对于汉字等双字节字符无法表示, 所以就会出现Python中文届的噩梦:</p>
+
 <div class="codehilite"><pre><span></span>UnicodeDecodeError: &#39;ascii&#39; codec can&#39;t decode byte 0xe4 in position 0:
 ordinal not in range(128)
 </pre></div>
 
-
 <p>而使用</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
 <span class="nb">reload</span><span class="p">(</span><span class="n">sys</span><span class="p">)</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">setdefaultencoding</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
 </pre></div>
 
-
 <p>就会Python的<code>默认编码改为utf-8</code></p>
+
 <h3>那这样有什么不好?</h3>
+
 <p>若有不好, 那么一定是reload前后, 现有的代码行为会不一致. <br/>
 比如:</p>
+
 <div class="codehilite"><pre><span></span>s1 = u&quot;中文&quot;
 s2 = &quot;中文&quot;
 s1 == s2
 </pre></div>
 
-
 <p><code>==</code>比较操作会把所有的字节串先decode为unicode字符串, 然后进行编码比较, 由于Python的默认编码是Ascii, 所以这里用ascii decode "中文"的时候会出错:</p>
+
 <div class="codehilite"><pre><span></span><span class="n">UnicodeWarning</span><span class="o">:</span> <span class="n">Unicode</span> <span class="n">equal</span> <span class="n">comparison</span> <span class="n">failed</span> <span class="n">to</span> <span class="n">convert</span> <span class="n">both</span> <span class="k">arguments</span> <span class="n">to</span>
 <span class="n">Unicode</span> <span class="o">-</span> <span class="n">interpreting</span> <span class="n">them</span> <span class="k">as</span> <span class="n">being</span> <span class="n">unequal</span>
 </pre></div>
-
 
 <p>这是Python会因出错而将结果判为False <br/>
 但是, 当你reload(sys), 重置默认编码为utf-8的时候, utf-8 decode中文就绰绰有余了,
 这时结果就是True! <br/>
 字符串的等于判定还是很常见的. reload前后造成的行为不一致,
 的确会影响结果(Flase-&gt;True)!</p>
+
 <h2>所以, 不用reload(sys), 我该怎么做?</h2>
+
 <p>对于字符串、字节串, 使用decode和encode就可以很好的解决问题, 比如</p>
+
 <div class="codehilite"><pre><span></span>s1 = u&quot;中文&quot;  # unicode
 s1.encode(&#39;utf-8&#39;)  # 编码为utf-8
 s2 = &quot;hello&quot;  # ascii
 s2.decode(&#39;ascii&#39;)  # 解码为unicode
 </pre></div>
 
-
 <p>抓取的网页, 也可以借助网页meta信息, 或者requests, bs4, chardet等判定编码. <br/>
 但是, 我用reload(sys)的最初原因, 是来自flask jinja2模版中出现中文! <br/>
 比如:</p>
+
 <div class="codehilite"><pre><span></span>@app.route(&#39;/&#39;)
 def index():
     return render_template(&#39;index.html&#39;, name=&#39;乌丸千岁&#39;)
@@ -117,25 +140,27 @@ def index():
 <span class="nt">&lt;html&gt;&lt;body&gt;</span><span class="cp">{{</span> <span class="nv">name</span> <span class="cp">}}</span><span class="nt">&lt;/body&gt;&lt;/html&gt;</span>
 </pre></div>
 
-
 <p>报错:</p>
+
 <div class="codehilite"><pre><span></span>File &quot;/Users/apple/holiday/blog/house/Test/app/templates/index.html&quot;, line 4, in top-level template code
     <span class="nt">&lt;h1&gt;</span><span class="cp">{{</span> <span class="nv">name</span> <span class="cp">}}</span><span class="nt">&lt;/h1&gt;</span>
 UnicodeDecodeError: &#39;ascii&#39; codec can&#39;t decode byte 0xe6 in position 0: ordinal not in range(128)
 </pre></div>
-
 
 <p>因为<code>{{}}</code>里面实际上是Python解释器在处理{关于Python前端模版可以参看mozillazg大神的<a href="https://mozillazg.com/2016/03/let-us-build-a-template-engine-part1.html">让我们一起来构建一个模板引擎</a>}, 所以也会遇到中文编码ascii decode error的坑. 解决办法是<code>u'乌丸千岁'</code>就好了...因为直接unicode, 不用ascii解码了... 以前不知道, SOP到<code>sys.setdefaultencoding('utf-8')</code>, 就一直用了.
 <hr/>
 编码问题是Python届的大坑, 现在的Python3又不一样了...
 打算过会翻译一篇<a href="http://lucumr.pocoo.org/2014/1/5/unicode-in-2-and-3/">flask作者的吐槽</a>.<br/>
 就酱... 总算能自圆其说了, 所谓的逻辑正确... 安.</p>
+
 <h2>参考</h2>
+
 <ul>
 <li><a href="http://lucumr.pocoo.org/2014/1/5/unicode-in-2-and-3/">More About Unicode in Python 2 and 3</a></li>
 <li><a href="http://blog.ernest.me/post/python-setdefaultencoding-unicode-bytes">立即停止使用 setdefaultencoding('utf-8'),以及为什么</a></li>
 <li><a href="http://www.regexlab.com/zh/encoding.htm">字符，字节和编码</a></li>
 </ul>
+
         <div id="disqus_thread"></div>
         <script>
         /**

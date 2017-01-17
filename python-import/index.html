@@ -8,11 +8,17 @@
     <body>
         <p>欢迎转载，转载本站文章请注明作者和出处。<a href="http://liuchang0812.com">刘畅的博客</a> <a href="https://github.com/Liuchang0812/slides/tree/master/pycon2015cn">文章地址</a>.本文所涉及到的代码在<a href="https://github.com/Liuchang0812/slides/tree/master/pycon2015cn">github</a>上。
 本文由<a href="https://github.com/neo1218">neo1218</a>修改后发布在<a href="http://neo1218.github.io">neo1218的博客</a></p>
+
 <h3>概述</h3>
+
 <p>Python 是一门优美简单、功能强大的动态语言。在刚刚接触这门语言时，我们会被其优美的格式、简洁的语法和无穷无尽的类库所震撼。在真正的将python应用到实际的项目中，你会遇到一些无法避免的问题。最让人困惑不解的问题有二类，一个 编码问题，另一个则是引用问题。</p>
+
 <p>本文主要讨论关于Python中import的机制与实现、以及介绍一些有意思的Python Hooks。</p>
+
 <h3>Python 类库引入机制</h3>
+
 <p>首先，看一个简单的例子：</p>
+
 <div class="codehilite"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">目录结构如下：</span>
 <span class="sd">├── __init__.py</span>
@@ -26,29 +32,36 @@
 <span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
 </pre></div>
 
-
 <p>现在，考虑一下：</p>
+
 <ol>
 <li>当我们执行main.py的时候，会发生什么事情？</li>
 <li>在main.py文件执行到<code>import string</code>的时候，解释器导入的string类库是当前文件夹下的string.py还是系统标准库的string.py呢？</li>
 <li>如果明确的指明⾃己要引⼊的类库？</li>
 </ol>
+
 <p>为了搞清楚上面的问题，我们需要了解关于Python类库引入的机制。</p>
+
 <h2>Python的两种引入机制</h2>
+
 <p>Python 提供了二种引入机制：</p>
+
 <ol>
 <li>relative import</li>
 <li>absolute import</li>
 </ol>
+
 <h3>relative import</h3>
+
 <p>relative import 也叫作相对引入，在Python2.5及之前是默认的引入方法。它的使用方法如下：</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">.string</span> <span class="kn">import</span> <span class="n">a</span>
 <span class="kn">from</span> <span class="nn">..string</span> <span class="kn">import</span> <span class="n">a</span>
 <span class="kn">from</span> <span class="nn">...string</span> <span class="kn">import</span> <span class="n">a</span>
 </pre></div>
 
-
 <p>这种引入方式使用一个点号来标识引入类库的精确位置。与linux的相对路径表示相似，一个点表示当前目录，每多一个点号则代表向上一层目录。</p>
+
 <div class="codehilite"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">├── __init__.py</span>
 <span class="sd">├── foo.py</span>
@@ -63,9 +76,10 @@
 <span class="sb">``</span><span class="err">`</span>
 </pre></div>
 
-
 <p>相对引入，那么我们需要知道相对什么来引入。相对引入使用被引入文件的<code>__name__</code>属性来决定该文件在整个包结构的位置。那么如果文件的<code>__name__</code>没有包含任何包的信息，例如<code>__name__</code>被设置为了<code>__main__</code>，则认为其为‘top level script'，而不管该文件的位置，这个时候相对引入就没有引入的参考物。如上面的程序所示，当我们执行<code>python main.py</code>时，Python解释器会抛出 ValueError: Attempted relative import in non-package的异常。</p>
+
 <p>为了解决这个问题，<a href="https://www.python.org/dev/peps/pep-0366/">PEP 0366 -- Main module explicit relative imports</a>提出了一个解决方案。允许用户使用<code>python -m ex2.main</code>的方式,来执行该文件。在这个方案下，引入了一个新的属性<code>__package__</code>。</p>
+
 <div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@localhost</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
 <span class="err">╰─$</span> <span class="n">cat</span> <span class="n">ex2</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
 <span class="k">print</span> <span class="n">__name__</span>
@@ -79,16 +93,18 @@
 <span class="mi">2</span>
 </pre></div>
 
-
 <h3>absolute import</h3>
+
 <p>absolute import 也叫作完全引入，非常类似于Java的引入进制，在Python2.5被完全实现，但是是需要通过<code>from __future__ import absolute_import</code>来打开该引入进制。在Python2.6之后以及Python3，完全引用成为Python的默认的引入机制。它的使用方法如下：</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">pkg</span> <span class="kn">import</span> <span class="n">foo</span>
 <span class="kn">from</span> <span class="nn">pkg.moduleA</span> <span class="kn">import</span> <span class="n">foo</span>
 </pre></div>
 
-
 <p>要注意的是，需要从包目录最顶层目录依次写下，而不能从中间开始。</p>
+
 <p>在使用该引入方式时，我们碰到比较多的问题就是因为位置原因，Python找不到相应的库文件，抛出ImportError的异常。让我们看一个完全引用的例子:</p>
+
 <div class="codehilite"><pre><span></span>  <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">  ex3</span>
 <span class="sd">├── __init__.py</span>
@@ -105,8 +121,8 @@
 <span class="k">print</span> <span class="n">a</span>
 </pre></div>
 
-
 <p>我们尝试着去运行main.py文件，Python解释器会抛出ImportError。那么我们如何解决这个问题呢？</p>
+
 <div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
 <span class="err">╰─$</span> <span class="n">python</span> <span class="n">ex3</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
 <span class="n">__main__</span>
@@ -117,14 +133,15 @@
 <span class="ne">ImportError</span><span class="p">:</span> <span class="n">No</span> <span class="n">module</span> <span class="n">named</span> <span class="n">ex3</span><span class="o">.</span><span class="n">foo</span>
 </pre></div>
 
-
 <p>首先，我们也可以使用前文所述的module的方式去运行程序，通过-m参数来告诉解释器<code>__package__</code>属性。如下：</p>
+
 <p>╭─liuchang@liuchangdeMacBook-Pro  ~/Codes/pycon
    ╰─$ python -m ex3.main
      <strong>main</strong>
      ex3
      2
      另外，我们还有一个办法可以解决该问题，在描述之前，我们介绍一个关于Python的非常有用的小知识：<strong>Python解释器会自动将当前工作目录添加到sys.path</strong>。如下所示，可以看到我们打印出的<code>sys.path</code>已经包含了当前工作目录。A</p>
+
 <div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span><span class="o">/</span><span class="n">ex4</span>
 <span class="err">╰─$</span> <span class="n">cat</span> <span class="n">main</span><span class="o">.</span><span class="n">py</span>
 <span class="kn">import</span> <span class="nn">sys</span>
@@ -134,9 +151,10 @@
 <span class="p">[</span><span class="s1">&#39;/Users/liuchang/Codes/pycon/ex4&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages/pip-7.1.0-py2.7.egg&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages/mesos-_PACKAGE_VERSION_-py2.7.egg&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python27.zip&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-darwin&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac/lib-scriptpackages&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-tk&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-old&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload&#39;</span><span class="p">,</span> <span class="s1">&#39;/Users/liuchang/Library/Python/2.7/lib/python/site-packages&#39;</span><span class="p">,</span> <span class="s1">&#39;/usr/local/lib/python2.7/site-packages&#39;</span><span class="p">,</span> <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC&#39;</span><span class="p">,</span> <span class="s1">&#39;/Library/Python/2.7/site-packages&#39;</span><span class="p">]</span>
 </pre></div>
 
-
 <p>了解了Python解释器的这个特性后，我们就可以解决完全引用的找不到类库的问题：执行的时候，让解释器自动的将类库的目录添加到sys.path中。</p>
+
 <p>我们可以在顶层目录中添加一个run_ex3.py的文件，文件内容和运行结果如下，可以看到Python解释器正确的执行了ex3.main文件。</p>
+
 <div class="codehilite"><pre><span></span><span class="err">╭─</span><span class="n">liuchang</span><span class="nd">@liuchangdeMacBook</span><span class="o">-</span><span class="n">Pro</span>  <span class="o">~/</span><span class="n">Codes</span><span class="o">/</span><span class="n">pycon</span>
 <span class="err">╰─$</span> <span class="n">cat</span> <span class="n">run_ex3</span><span class="o">.</span><span class="n">py</span>
 <span class="kn">from</span> <span class="nn">ex3</span> <span class="kn">import</span> <span class="n">main</span>
@@ -147,62 +165,83 @@
 <span class="mi">2</span>
 </pre></div>
 
-
 <h1>一些实践经验</h1>
+
 <h2>相对引用还是绝对引用？</h2>
+
 <p>上面介绍了Python的两种引用方式，都可以解决引入歧义的问题。那我们应该使用哪一种呢？</p>
+
 <p>先说明一下Python的默认引用方式，在Python2.4及之前，Python只有相对引用这一种方式，在Python2.5中实现了绝对引用，但默认没有打开，需要用户自己指定使用该引用方式。在之后的版本和Python3版本，绝对引用已经成为默认的引用方式。</p>
+
 <p>其次，二种引用方式各有利弊。绝对引用代码更加清晰明了，可以清楚的看到引入的包名和层次，但是，当包名修改的时候，我们需要手动修改所有的引用代码。相对引用则比较精简，不会被包名修改所影响，但是可读性较差，不如完全引用清晰。</p>
+
 <p>最后，对于两种引用的方式选择，还是有争论的。在PEP8中，Python官方推荐的是绝对引用,详细理由可以参考<a href="https://www.python.org/dev/peps/pep-0008/#imports">这儿</a>。</p>
+
 <blockquote>
 <p>Absolute imports are recommended, as they are usually more readable and tend to be better behaved (or at least give better error messages) if the import system is incorrectly configured (such as when a directory inside a package ends up on sys.path ):</p>
 </blockquote>
+
 <div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">mypkg.sibling</span>
 <span class="kn">from</span> <span class="nn">mypkg</span> <span class="kn">import</span> <span class="n">sibling</span>
 <span class="kn">from</span> <span class="nn">mypkg.sibling</span> <span class="kn">import</span> <span class="n">example</span>
 </pre></div>
 
-
 <blockquote>
 <p>However, explicit relative imports are an acceptable alternative to absolute imports, especially when dealing with complex package layouts where using absolute imports would be unnecessarily verbose:</p>
 </blockquote>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">sibling</span>
 <span class="kn">from</span> <span class="nn">.sibling</span> <span class="kn">import</span> <span class="n">example</span>
 </pre></div>
-
 
 <blockquote>
 <p>Standard library code should avoid complex package layouts and always use absolute imports.
 Implicit relative imports should never be used and have been removed in Python 3.</p>
 </blockquote>
+
 <h4>规范打包发布</h4>
+
 <p>为了别人使用自己代码的方便，应该尽量使用规范的包分发机制。为自己的Python包编写正确的setup.py文件，添加相应的README.md文件。对于提供一些可执行命令的包，则可以使用 console_entrypoint 的机制来提供。因为打包和分发不是本文重点，不再详细叙述，大家可以查看官方文档。</p>
+
 <h4>使用virtualenv管理包依赖</h4>
+
 <p>在使用Python的时候，尽量使用virtualenv来管理项目，所有的项目都运行在特定的virtualenv中。并且为自己的项目生成正确的依赖描述文件。</p>
+
 <div class="codehilite"><pre><span></span>pip freeze &gt; requirements.txt
 </pre></div>
 
-
 <p>关于virtualenv的用法，可以参考我之前的一篇文章<a href="http://lcblog-wordpress.stor.sinaapp.com/uploads/2015/10/virtualenv教程.pdf">virtualenv教程</a>。</p>
+
 <h3>Python import实现</h3>
+
 <p>Python 提供了 import 语句来实现类库的引用，下面我们详细介绍当执行了 import 语句的时候，内部究竟做了些什么事情。</p>
+
 <p>当我们执行一行 <code>from package import module as mymodule</code>命令时，Python解释器会查找package这个包的module模块，并将该模块作为mymodule引入到当前的工作空间。所以import语句主要是做了二件事：</p>
+
 <ol>
 <li>查找相应的module :find_module:</li>
 <li>加载module到local namespace :load_module:</li>
 </ol>
+
 <p>下面我们详细了解python是如何查找模块的。</p>
+
 <h4>查找module的过程</h4>
+
 <p>在import的第一个阶段，主要是完成了查找要引入模块的功能，这个查找的过程如下：</p>
+
 <ol>
 <li>检查 sys.modules (保存了之前import的类库的缓存），如果module被找到，则⾛到第二步。</li>
 <li>检查 sys.meta_path。meta_path 是一个 list，⾥面保存着一些 finder 对象，如果找到该module的话，就会返回一个finder对象。</li>
 <li>检查⼀些隐式的finder对象，不同的python实现有不同的隐式finder，但是都会有 sys.path_hooks, sys.path_importer_cache 以及sys.path。</li>
 <li>抛出 ImportError。</li>
 </ol>
+
 <h5>sys.modules</h5>
+
 <p>对于第一步中sys.modules，我们可以打开Python来实际的查看一下其内容：</p>
+
 <blockquote></blockquote>
+
 <div class="codehilite"><pre><span></span><span class="n">Python</span> <span class="mf">2.7</span><span class="o">.</span><span class="mi">10</span> <span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="n">Aug</span> <span class="mi">22</span> <span class="mi">2015</span><span class="p">,</span> <span class="mi">20</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">39</span><span class="p">)</span>
 <span class="p">[</span><span class="n">GCC</span> <span class="mf">4.2</span><span class="o">.</span><span class="mi">1</span> <span class="n">Compatible</span> <span class="n">Apple</span> <span class="n">LLVM</span> <span class="mf">7.0</span><span class="o">.</span><span class="mi">0</span> <span class="p">(</span><span class="n">clang</span><span class="o">-</span><span class="mf">700.0</span><span class="o">.</span><span class="mf">59.1</span><span class="p">)]</span> <span class="n">on</span> <span class="n">darwin</span>
 <span class="n">Type</span> <span class="s2">&quot;help&quot;</span><span class="p">,</span> <span class="s2">&quot;copyright&quot;</span><span class="p">,</span> <span class="s2">&quot;credits&quot;</span> <span class="ow">or</span> <span class="s2">&quot;license&quot;</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span><span class="o">.</span>
@@ -213,24 +252,30 @@ Implicit relative imports should never be used and have been removed in Python 3
 <span class="s1">&#39;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/zlib.so&#39;</span>
 </pre></div>
 
-
 <blockquote></blockquote>
+
 <p>可以看到sys.modules已经保存了一些包的信息，由这些信息，我们就可以直接知道要查找的包的位置等信息。</p>
+
 <h5>finder、loader和importer</h5>
+
 <p>在上文中，我们提到了sys.meta_path中保证了一些finder对象。在python中，不仅定义了finder的概念，还定义了loader和importor的概念。</p>
+
 <ul>
 <li>finder的任务是决定自己是否根据名字找到相应的模块，在py2中，finder对象必须实现find_module()方法，在py3中必须要实现find_module()或者find_loader（)方法。如果finder可以查找到模块，则会返回一个loader对象(在py3.4中，修改为返回一个module specs)。</li>
 <li>loader则是负责加载模块，它必须实现一个load_module()的方法。</li>
 <li>importer 则指一个对象，实现了finder和loader的方法。因为Python是duck type，只要实现了方法，就可以认为是该类。</li>
 </ul>
+
 <h5>sys.meta_path</h5>
+
 <p>在Python查找的时候，如果在sys.modules没有查找到，就会依次调用sys.meta_path中的finder对象。默认的情况下，sys.meta_path是一个空列表，并没有任何finder对象。</p>
+
 <div class="codehilite"><pre><span></span>In [6]: sys.meta_path
 Out[6]: []
 </pre></div>
 
-
 <p>我们可以向sys.meta_path中添加一些定义的finder，来实现对Python加载模块的修改。比如下例，我们实现了一个会将每次加载包的信息打印出来的finder。</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 
@@ -245,9 +290,10 @@ Out[6]: []
 <span class="kn">import</span> <span class="nn">socket</span>
 </pre></div>
 
-
 <p>当我们执行的时候，就可以看到系统加载socket包时所发生的事情。</p>
+
 <blockquote></blockquote>
+
 <div class="codehilite"><pre><span></span>╭─liuchang@localhost  ~/Codes/pycon/ex5_meta_path
 ╰─$ python finder1.py
 Importing socket None None
@@ -258,16 +304,24 @@ Importing _ssl None None
 Importing cStringIO None None
 </pre></div>
 
-
 <blockquote></blockquote>
+
 <h5>sys.path hook</h5>
+
 <p>Python import的hook分为二类，一类是上一章节已经描述的meta hook，另一类是 path hook。</p>
+
 <p>当处理sys.path（或者package.<strong>path</strong>)时，就会调用对应的一部分的 Path hook。Path Hook是通过向sys.path_hooks 中添加一个importer生成器来注册的。</p>
+
 <p>sys.path_hooks 是由可被调用的对象组成，它会顺序的检查以决定他们是否可以处理给定的sys.path的一项。每个对象会使用sys.path项的路径来作为参数被调用。如果它不能处理该路径，就必须抛出ImportError，如果可以，则会返回一个importer对象。之后，不会再尝试其它的sys.path_hooks对象，即使前一个importer出错了。</p>
+
 <p>详细可以参考<a href="https://www.python.org/dev/peps/pep-0302/#specification-part-2-registering-hooks">registering-hooks</a>。</p>
+
 <h1>python import hooks</h1>
+
 <p>在介绍完Python的引用机制与一些实现方法后，接下来我们介绍一些关于如何根据自己的需求来扩展Python的引用机制。</p>
+
 <p>在开始详细介绍前，给大家展示一个实用性不高，但是很有意思的例子：<strong>让Python在执行代码的时候自动安装缺失的类库</strong>。我们会实现一个autoinstall的模块，只要import了该模块，就可以打开该功能。如下所示，我们尝试引入tornado库的时候，iPython会提示我们没有安装。然后，我们引入了autoinstall，再尝试引入tornado，iPython就会自动的安装tornado库。</p>
+
 <div class="codehilite"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">tornado</span>
 <span class="o">---------------------------------------------------------------------------</span>
 <span class="ne">ImportError</span>                               <span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">)</span>
@@ -292,8 +346,8 @@ Importing cStringIO None None
 <span class="n">Successfully</span> <span class="n">installed</span> <span class="n">backports</span><span class="o">.</span><span class="n">ssl</span><span class="o">-</span><span class="n">match</span><span class="o">-</span><span class="n">hostname</span><span class="o">-</span><span class="mf">3.4</span><span class="o">.</span><span class="mf">0.2</span> <span class="n">certifi</span><span class="o">-</span><span class="mf">2015.9</span><span class="o">.</span><span class="mf">6.2</span> <span class="n">tornado</span><span class="o">-</span><span class="mf">4.2</span><span class="o">.</span><span class="mi">1</span>
 </pre></div>
 
-
 <p>这个功能的实现其实很简单，利用了sys.meta_path。autoinstall的全部代码如下：</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
@@ -317,26 +371,36 @@ Importing cStringIO None None
 <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AutoInstall</span><span class="p">)</span>
 </pre></div>
 
-
 <h2>import hook的重要性</h2>
+
 <p>我们为什么需要Python import的hook呢？使用import的hook可以让我们做到很多事情，比如说当我们的Python包存储在一个非标准的文件中，或者Python程序存储在网络数据库中，或者像py2exe一样将Python程序打包成了一个文件，我们需要一种方法来正确的解析它们。</p>
+
 <p>其次，我们希望在Python加载类库的时候，可以额外的做一些事情，比如上传审计信息，比如延迟加载，比如自动解决上例的依赖未安装的问题。</p>
+
 <p>所以，import系统的Hook技术是值的花时间学习的。</p>
+
 <h2>如何实现import hooks</h2>
+
 <p>Python提供了一些方法，让我们可以在代码中动态的调用import。主要有如下几种：</p>
+
 <ol>
 <li>__import__ : Python的内置函数</li>
 <li>imputil        : Python的import工具库，在py2.6被声明废弃，py3中彻底移除。</li>
 <li>imp            : Python2 的一个import库，py3中移除</li>
 <li>importlib      : Python3 中最新添加，backport到py2.7，但只有很小的子集（只有一个函数）。</li>
 </ol>
+
 <p>Python2 所有关于import的库的列表参见<a href="https://docs.python.org/2/library/modules.html">Importing Modules</a>。Python3 的可以参考<a href="https://docs.python.org/3/library/modules.html">Importing Modules</a>
 <a href="https://www.python.org/dev/peps/pep-0302">PEP 0302 -- New Import Hooks</a> 提案详细的描述了importlib的目的、用法。</p>
+
 <h2>一些Hook示例</h2>
+
 <h3>Lazy化库引入</h3>
+
 <p>使用Import Hook，我们可以达到Lazy Import的效果，当我们执行import的时候，实际上并没引入该库，只有真正的使用这个库的时候，才会将其引入到当前工作空间。
 具体的代码可以参考<a href="https://github.com/noahmorrison/limp">github</a>。
 实现的效果如下：</p>
+
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -360,6 +424,7 @@ Importing cStringIO None None
 </td></tr></table>
 
 <p>它的实现也很简单：</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">imp</span>
 
@@ -396,10 +461,12 @@ Importing cStringIO None None
 <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LazyFinder</span><span class="p">())</span>
 </pre></div>
 
-
 <h3>Flask 插件库统一入口</h3>
+
 <p>使用过Flask的同学都知道，Flask的对于插件提供了统一的入口。比如说我们安装了Flask_API这个库，然后我们可以直接<code>import flask_api</code>来使用这个库，同时Flask还允许我们采用<code>import flask.ext.api</code>的方式来引用该库。</p>
+
 <p>这里Flask就是使用了import 的hook，当引入flask.ext的包时，就自动的引用相应的库。Flask实现了一个叫ExtensionImporter的类，这个类实现了find_module和load_module代码实现如下<a href="https://github.com/mitsuhiko/flask/blob/master/flask/exthook.py#L27">github</a>：</p>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">ExtensionImporter</span>(<span class="n">object</span>):
     <span class="s">&quot;&quot;&quot;This importer redirects imports from this submodule to other locations.</span>
 <span class="s">    This makes it possible to transition from the old flaskext.name to the</span>
@@ -463,19 +530,22 @@ Importing cStringIO None None
         <span class="n">raise</span> <span class="n">ImportError</span>(<span class="s">&#39;No module named %s&#39;</span> % <span class="n">fullname</span>)
 </pre></div>
 
-
 <p>然后在Flask的ext目录下的__init__.py文件中，初始化了该Importer。</p>
+
 <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">setup</span><span class="p">():</span>
     <span class="kn">from</span> <span class="nn">..exthook</span> <span class="kn">import</span> <span class="n">ExtensionImporter</span>
     <span class="n">importer</span> <span class="o">=</span> <span class="n">ExtensionImporter</span><span class="p">([</span><span class="s1">&#39;flask_</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;flaskext.</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">__name__</span><span class="p">)</span>
     <span class="n">importer</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
 </pre></div>
 
-
 <h3>总结</h3>
+
 <p>希望坚持阅读到本处的你，能明白Python import的用法、实现和改造方法。准备仓促，难免会有错误，欢迎大家指正和PR。</p>
+
 <p>本文使用CC-BY-SA协议。</p>
+
 <h3>附录</h3>
+
 <ol>
 <li>https://www.python.org/dev/peps/pep-0302/</li>
 <li>https://www.python.org/dev/peps/pep-0338/</li>
@@ -484,7 +554,9 @@ Importing cStringIO None None
 <li>https://github.com/noahmorrison/limp</li>
 <li>https://github.com/mitsuhiko/flask</li>
 </ol>
+
 <h3>neo1218的修改</h3>
+
 <ol>
 <li><a href="https://github.com/Liuchang0812/slides/issues/1">python自动把当前路径添加进PYTHONPATH: 具体见此ISSUE</a></li>
 <li>所有的项目从编写到运行都在特定的virtualenv中<ul>
@@ -508,6 +580,7 @@ Importing cStringIO None None
 </li>
 <li>这篇文章很精彩, 再次感谢作者写出了这么好的文章!</li>
 </ol>
+
         <div id="disqus_thread"></div>
         <script>
         /**

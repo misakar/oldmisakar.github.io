@@ -7,16 +7,23 @@
     </head>
     <body>
         <p><img alt="" src="http://image.tianjimedia.com/uploadImages/2013/134/R687K4V02BY2_iStock_000008756145Medium_500.jpg" /></p>
+
 <h1>这篇博客说说硬盘</h1>
+
 <h2>硬盘是用来干什么的?</h2>
+
 <p>硬盘是用来存储数据的.... <br/>
 相比于寄存器和内存, 硬盘的容量更大, 不过硬盘和CPU之间的运行速度差较大,
 适合存放一些改动不频繁的数据, 比如文件:)</p>
+
 <h2>硬盘的组成</h2>
+
 <p>呃, 这里说的是<strong>传统的磁盘</strong>, 不是ssd</p>
+
 <ul>
 <li><a href="https://www.youtube.com/watch?v=4iaxOUYalJU">先看一个视频, 感觉这种高速运行的东西还是看视频比较直观...</a></li>
 </ul>
+
 <p>文字描述 <br/>
 硬盘由盘片、主轴、读写头组成; 一个硬盘的主轴上有多个盘片,
 盘片上下2面都可以用读写头读取. <br/>
@@ -24,19 +31,25 @@
 读写头不是贴着盘片运行的(这样会产生摩擦阻力:脑洞突然想到高中物理老师语重心长的对我们说:摩擦力不一定是阻力啊...skip), 而是和盘面有一定距离, 类似飞机✈️ 飞行, 读写头飞行在盘片上空. <br/>
 盘片上被划分为一圈圈磁道, 之所以用圈, 因为磁道是<strong>同心圆</strong>,
 这样以盘面圆心画扇形与磁道相交的区域就是<strong>扇区</strong>, 扇区是磁盘的最基础管理单元, 一个扇区是512字节</p>
+
 <h3>硬盘表示法</h3>
+
 <p><strong>CHS表示法</strong> <br/>
 硬盘上的扇区在物理上是用"柱面(Cylinder)-磁头(Head)-扇区(Sector)"来定位的, 即CHS表示法. <br/>
 比如bios找mbr就会检查<strong>0盘0道1扇区</strong>最后两个字节是不是0xaa和0x55魔数,
 注意CHS表示法中扇区是<strong>从1开始的!</strong> 不是从0开始的(异世界生活...脑抽..无视我)
 <br/>
 CHS表示法还要计算柱面、磁头, 太麻烦, 于是就有了LBA表示法.</p>
+
 <p><strong>LBA表示法</strong> <br/>
 LBA表示法把磁盘扇区从0开始依次编号. <br/>
 LBA表示法有2种, LBA28和LBA48,
 分别支持<code>2^28*512=128GB</code>和<code>2^48*512=128PB</code>的容量</p>
+
 <h2>用汇编操作硬盘</h2>
+
 <h3>CPU与硬件之间的~I/O接口</h3>
+
 <p>硬件是复杂的, 每个硬件都有自己的电路特性, 如果让CPU直接面对硬件, 就比较难受了.
 于是便有了I/O接口, 硬件依据接口规范实现功能, CPU依据接口规范操作硬件,
 n*m的操作简化为n+m. 接口的理念在计算机世界应用实在广泛, python的WSGI接口, web开发中的restful API接口... <br/>
@@ -51,13 +64,17 @@ n*m的操作简化为n+m. 接口的理念在计算机世界应用实在广泛, p
 PATA接口的线缆也称为IDE线, 一个IDE线上可以挂2块硬盘,
 一个是主盘(Master)、一个是从盘(Slave)。一个主板支持4个IDE(PATA)硬盘,
 所以提供了2个IDE插槽- IDE0和IDE1, 不过按照标准: 插槽叫做通道</p>
+
 <ul>
 <li>IDE0 -&gt; Primary通道 -&gt; Master</li>
 <li>IDE1 -&gt; Secondary通道 -&gt; Slave</li>
 </ul>
+
 <p>SATA因为兼容, 所以也是这一套规范. <br/>
 OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相应的寄存器.</p>
+
 <h3>端口寄存器</h3>
+
 <p>| IO端口|  | 端口用途 | |
 | ------ | --- | -------- | --- |
 | Primary| Secondary | 读操作 | 写操作 |
@@ -72,7 +89,9 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 | 0x1F7 | 0x177 | status(硬盘状态寄存器) | command(命令写入该寄存器, 硬盘就开始工作了) |
 | Control Block register ||| 控制硬盘工作状态| 
 | 0x3F6 | 0x376 | Alternate status | Device Control |</p>
+
 <p>从这几组端口(ps端口就是寄存器)的设定可以看出: <strong>寄存器实在太tm宝贵了!</strong></p>
+
 <ul>
 <li>同一个寄存器在不同操作下变着法子用</li>
 <li>那个device寄存器每一位都被掏空啊!<ul>
@@ -81,7 +100,8 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 <li>0代表主盘, 1代表从盘</li>
 <li>也就是说无论是主板还是从盘,使用的端口都是一样的,只是device寄存器设置的不一样</li>
 </ul>
-</li>
+
+<p></li>
 <li>第6位用来设置是否启用LBA方式<ul>
 <li>0代表CHS方式, 1代表LBA方式</li>
 </ul>
@@ -94,8 +114,10 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 <li>读的时候硬盘控制器会认为是想获取硬盘的状态</li>
 </ul>
 </li>
-</ul>
+</ul></p>
+
 <p><strong>device和status寄存器的状态</strong> <br/></p>
+
 <div class="codehilite"><pre><span></span>device寄存器  (位)   0     1      2     3    4     5     6      7
               (开关) -LBA地址的第23~27位- 主/从盘  1  寻址模式  1
 
@@ -105,9 +127,10 @@ status寄存器  (位)   0  1  2  3  4  5  6      7
                错误信息见error端口)
 </pre></div>
 
-
 <h3>常用的硬盘操作方法</h3>
+
 <p><strong>对硬盘进行操作的一般顺序</strong> <br/></p>
+
 <ol>
 <li>先选择通道(Primary or Secondary), 往该通道的sector count寄存器中写入待操作的扇区数</li>
 <li>往该通道上的三个LBA寄存器写入扇区起始地址的低24位</li>
@@ -117,17 +140,24 @@ status寄存器  (位)   0  1  2  3  4  5  6      7
 <li>如果以上步骤是读硬盘, 进入下一个步骤。否则, 完工</li>
 <li>将硬盘数据读出</li>
 </ol>
+
 <p><strong>mbr从硬盘中读取内核加载器de代码示例</strong>
 + <a href="https://github.com/UiharuOS/uiharu/blob/master/src/boot/mbr.S#L46">代码示例</a></p>
+
 <h2>其他种类的硬盘</h2>
+
 <ul>
 <li><a href="https://www.youtube.com/watch?v=YQEjGKYXjw8">SSD硬盘</a></li>
 <li><a href="https://www.youtube.com/watch?v=f2XfFz83TDA">SSHD硬盘</a></li>
 </ul>
+
 <h2>似乎是惯例的~总结</h2>
+
 <p>说说这段时间写汇编的感觉, 汇编其实不难, 相比于高级语言汇编更注重细节也更繁琐.
 耐性一点, 依次看不完看2次, 弄明白的感觉实在是太爽啦!</p>
+
 <p><img alt="赢了呢!" src="https://cloud.githubusercontent.com/assets/10671733/20243302/130441f6-a98d-11e6-83d5-e83fc7bf96d1.png" /></p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

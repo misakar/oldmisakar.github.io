@@ -9,22 +9,30 @@
         <blockquote>
 <p>flask猴塞雷</p>
 </blockquote>
+
 <p><img alt="flask" src="http://7xj431.com1.z0.glb.clouddn.com/flask" />
 写flask一年了, 我想总结一下, 这一年到现在, 我是如何使用flask做web开发的。
 <hr/>
 开发积累到现在:<strong><a href="https://github.com/neo1218/mana">mana</a> +
 <a href="https://github.com/neo1218/rest">rest</a></strong></p>
+
 <h2>我使用flask的几个场景</h2>
+
 <h3>1. web应用</h3>
+
 <p>使用mana的startproject命令就行, 只需编写视图和数据库就可以了,
 编写web应用的"压力"主要在前端, 我不会前端。<br/>
 这个博客就是用flask写的, 不过不是直接用mana,
 而是用自己写的静态博客生成器cat构建的,其实跑在本地的话和mana原理是差不多的。</p>
+
 <h3>2. web后台(API)</h3>
+
 <p>最主要的就是编写API,实现前后端分离。关于flask编写API可以参看我的<a href="http://neo1218.github.io/api/">这篇文章</a>。首先使用mana构建项目,然后使用rest构建API,
 rest是一个对平时的总结库,总结的形式自然不是博文而是封装在装饰器中的代码,
 涉及蓝图构建, 权限管理, 分页等方面。下一节会具体介绍<strong>mana + rest</strong>的开发方式。</p>
+
 <h3>3. 其他项目的接口</h3>
+
 <ol>
 <li>mana:<ul>
 <li>mana是用于构建flask的, 但是mana本身包含了flask, 这种包含涉及flask的拆分,
@@ -41,15 +49,21 @@ rest是一个对平时的总结库,总结的形式自然不是博文而是封装
 </ul>
 </li>
 </ol>
+
 <h2>我如何使用mana+rest编写API</h2>
+
 <h3>为什么要造轮子</h3>
+
 <p>首先我为什么要写mana和rest这两个轮子, 因为:<br/>
 <img alt="dont-repeat" src="http://7xj431.com1.z0.glb.clouddn.com/10.30.24.png" /><br/>
 mana避免了重复的构建, 这一点定好规范就OK;
 而rest则是使用了避免重复的最佳也是最优雅的方式:装饰器(个人观点)。<br/></p>
+
 <h3>如何使用</h3>
+
 <p>使用mana和别的场景一样,用于快速构建基础设置(目录组织,基本配置,基础权限,基础管理,基础数据库), 而使用rest需要
 知道rest提供的3类工具</p>
+
 <ol>
 <li>cli命令行工具<ul>
 <li>用于构建API蓝图, 集成基本的HTTPBasic验证</li>
@@ -64,13 +78,19 @@ mana避免了重复的构建, 这一点定好规范就OK;
 </ul>
 </li>
 </ol>
+
 <p>有了这3个工具, 使用flask编写API的核心就在<strong>http方法</strong>和<strong>字段的返回</strong>上了</p>
+
 <h3>mana+rest编写API的例子</h3>
+
 <p>rest库自带了一个小例子:https://github.com/neo1218/rest/tree/master/examples<br/>
 说实话, 当这个例子工作的时候, 我是很激动的,
 因为我觉得flask不在是那么<a href="http://neo1218.github.io/permission/">恶心得flask了...</a>, 这个flask我给转了基因(我的基因)。</p>
+
 <h2>flask作为其他项目的接口如何拆分</h2>
+
 <p>flask自己作为一个框架,在使用时是可拆分的,很灵活。从一个大型flask项目的角度分析, flask项目可以拆分成如下部分:</p>
+
 <ol>
 <li>配置<ul>
 <li>生产环境</li>
@@ -98,9 +118,12 @@ mana避免了重复的构建, 这一点定好规范就OK;
 </ul>
 </li>
 </ol>
+
 <p>python天然的<strong>文件即模块</strong>以及包的组织模式可以很好将这些部分耦合起来,
 当然,在开发中需要注意导入顺序的问题, 有时候遇到循环导入是很烦的...</p>
+
 <h2>flask开发中几个重要的xx</h2>
+
 <ol>
 <li>flask分页<ul>
 <li><a href="http://www.pythondoc.com/flask-mega-tutorial/pagination.html">flask处理分页</a></li>
@@ -122,22 +145,31 @@ mana避免了重复的构建, 这一点定好规范就OK;
 </ul>
 </li>
 </ol>
+
 <h2>flask资源汇总</h2>
+
 <p>github(欢迎PR):https://github.com/Muxi-Flask/Flask-Resources</p>
+
 <h2>总结</h2>
+
 <p>这篇博客总结了我如何使用flask编写web应用和后台的,当然仅仅是编写,
 至于部署和数据库管理都没有说。我说过flask是个shit, 在这里我想改一改:</p>
+
 <blockquote>
 <p>学习flask是极好的;用flask写第一个web应用是极好的;
 用flask写第二个web应用的时候,flask is a shit!
 shit 则思变...</p>
 </blockquote>
+
 <p>但无论如何, flask还是陪伴我走过了这一年, 逃过了一节又一节。<br/>
 所以我想说</p>
+
 <blockquote>
 <p>flask 大法好</p>
 </blockquote>
+
 <p>(to be continuse...)</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

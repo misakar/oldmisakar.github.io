@@ -7,30 +7,39 @@
     </head>
     <body>
         <h1>用汇编读写硬盘</h1>
+
 <p>直接用汇编读写硬盘, 很cool, 但是有点麻烦, 在此做个简单的纪录📝 </p>
+
 <h2>硬盘适配器端口及功能分配</h2>
+
 <p>在这篇博客<a href="https://neo1218.github.io/disk/">呃,硬盘</a>里</p>
+
 <h2>读写步骤</h2>
+
 <h3>step0: 备份寄存器</h3>
+
 <p>硬盘读写会用到eax, cx寄存器, 需要提前备份</p>
+
 <div class="codehilite"><pre><span></span>mov esi, eax
 mov di, cx
 </pre></div>
 
-
 <h3>step1: 选择通道, 往该通道的sector count寄存器中写入待操作的扇区数</h3>
+
 <ul>
 <li>Primary: ---&gt; 0x1F2</li>
 <li>Secondary: -&gt; 0x172</li>
 </ul>
+
 <p>比如选择主通道(ps:通道其实就是IDE插槽, 一个通道上可以挂2块盘(主盘、从盘))</p>
+
 <div class="codehilite"><pre><span></span>mov dx, 0x1f2
 mov al, cl      ; cl 事先放好待操作的扇区数
 out dx, al
 </pre></div>
 
-
 <h3>step2: 设置lba地址, 往该通道上的三个lba寄存器中写入扇区起始地址的低24位</h3>
+
 <div class="codehilite"><pre><span></span>mov eax, esi    ; 恢复eax, eax事先放好扇区起始地址
 
 ; lbalow
@@ -49,15 +58,16 @@ mov dx, 0x1f5
 out dx, al
 </pre></div>
 
-
 <h3>step3: 往device寄存器中写入lba地址的24~27位, 并置第6位为1(LBA模式), 选择操作的硬盘(master or slave)</h3>
+
 <p>上一下device寄存器的结构:</p>
+
 <div class="codehilite"><pre><span></span>device寄存器  (位)   0     1      2     3    4     5     6      7
               (开关) -LBA地址的第23~27位- 主/从盘  1  寻址模式  1
 </pre></div>
 
-
 <p>代码:</p>
+
 <div class="codehilite"><pre><span></span>; lba address
 shr eax, cl
 or al, 0xe0     ; 11100000 -&gt; 高3位全部置为1
@@ -65,24 +75,25 @@ mov dx, 0x1f6
 out dx, al
 </pre></div>
 
-
 <h3>step4: 往通道的command寄存器写入操作命令</h3>
+
 <p>写入操作命令时需要检测状态寄存器, 判断当前硬盘是否繁忙(有无命令执行). 状态寄存器结构:</p>
+
 <div class="codehilite"><pre><span></span>status寄存器  (位)   0  1  2  3  4  5  6      7
               (开关) ERR     DRQ      DRDY   BSY
               (为1表示有错误 错误信息见error端口)
 </pre></div>
 
-
 <p>代码:</p>
+
 <div class="codehilite"><pre><span></span>mov dx, 0x1f7
 mov al, 0x20    ; 01000000
 out dx, al      ; 写入命令, 状态寄存器就&quot;变成了&quot;命令寄存器...(weird, right?)
                 ; 硬盘开始工作
 </pre></div>
 
-
 <h3>step5: 读取硬盘中的数据</h3>
+
 <div class="codehilite"><pre><span></span><span class="m">.</span>not_ready<span class="o">:</span>
     nop             <span class="p">;</span> 空操作<span class="p">,</span> 类似sleep
     <span class="kr">in</span> al<span class="p">,</span> dx       <span class="p">;</span> 读取状态寄存器<span class="p">(</span>无需重新初始化dx寄存器<span class="p">)</span>
@@ -109,15 +120,15 @@ out dx, al      ; 写入命令, 状态寄存器就&quot;变成了&quot;命令寄
     ret             <span class="p">;</span> 函数返回<span class="p">,</span> <span class="kp">call</span>函数的时候会将返回地址压入栈中
 </pre></div>
 
-
 <p>检测状态寄存器(读操作)BSY位, 循环读取[之前传入的扇区数]个扇区</p>
+
 <div class="codehilite"><pre><span></span>mov dx, 0x1f0
 in ax, dx
 mov [bx], ax
 </pre></div>
 
-
 <p>这3步实现从硬盘中读出数据并加载到内存. uiharu的loader、kernel.bin、kernel image都是这样读写的!</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

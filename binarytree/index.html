@@ -7,16 +7,22 @@
     </head>
     <body>
         <h1>二叉查找树</h1>
+
 <h2>定义</h2>
+
 <p>二叉查找树(Binary Search Tree, BST), 符合以下条件的树称为二叉查找树:</p>
+
 <ol>
 <li>任意节点若左子树不为空, 则左子树中任意节点的值小于根节点</li>
 <li>任意节点若右子树不为空, 则右子树中任意节点的值大于根节点</li>
 <li>任意节点的左右子树均为二叉查找树</li>
 <li>不存在键值相等的节点</li>
 </ol>
+
 <h2>数据结构节点</h2>
+
 <p>BST维护一个内部类BSTNode作为节点数据结构:</p>
+
 <div class="codehilite"><pre><span></span>public class BSTree&lt;T extends Comparable&lt;T&gt;&gt;
 {
     private BSTNode&lt;T&gt; mRoot;   // 根节点
@@ -41,10 +47,11 @@
 }
 </pre></div>
 
-
 <h2>遍历</h2>
+
 <p>对于BST有三种遍历方式: 前序、中序、后序. <br/>
 <strong>前序遍历</strong></p>
+
 <div class="codehilite"><pre><span></span>private void preOrder(BSTNode&lt;T&gt; mRoot)
 {
     if (mRoot != null)
@@ -56,8 +63,8 @@
 }
 </pre></div>
 
-
 <p><strong>中序遍历</strong></p>
+
 <div class="codehilite"><pre><span></span>private mOrder(BSTNode&lt;T&gt; mRoot)
 {
     if (mRoot != null)
@@ -69,8 +76,8 @@
 }
 </pre></div>
 
-
 <p><strong>后序遍历</strong></p>
+
 <div class="codehilite"><pre><span></span>private lOrder(BSTNode&lt;T&gt; mRoot)
 {
     if (mRoot != null)
@@ -82,17 +89,20 @@
 }
 </pre></div>
 
-
 <h2>查找</h2>
+
 <p><strong>1.查找的过程</strong><br></p>
+
 <ol>
 <li>若BST为空树, 则查找失败</li>
 <li>若查找值等于BST根节点的key值, 则查找成果, 否则</li>
 <li>若查找值小于BST根节点的值, 继续查找左子树 (减治、递归), 否则</li>
 <li>查找右子树 (减治、递归).</li>
 </ol>
+
 <p><br>
 <strong>2.查找的实现</strong></p>
+
 <div class="codehilite"><pre><span></span>private BSTNode&lt;T&gt; search(BSTNode&lt;T&gt; mRoot, T key)
 {
     if (mRoot == null)
@@ -108,13 +118,14 @@
 }
 </pre></div>
 
-
 <p>整个查找过程的算法复杂度是O(logN); <br></p>
+
 <p><strong>3.查找gif</strong><br>
 <img alt="查找" src="http://ww3.sinaimg.cn/large/7cc829d3gw1f62xl45leug20ci0aitbs.gif" />
 <br>
 <strong>特殊情况</strong><br>
 1. 查找最大值</p>
+
 <div class="codehilite"><pre><span></span>// 最右叶子节点即为最大值
 public BSTNode&lt;T&gt; getMax(BSTNode&lt;T&gt; mRoot)
 {
@@ -128,8 +139,8 @@ public BSTNode&lt;T&gt; getMax(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <p>2.查找最小值</p>
+
 <div class="codehilite"><pre><span></span>// 最左叶子节点即为最小值节点
 public BSTNode&lt;T&gt; getMin(BSTNode&lt;T&gt; mRoot)
 {
@@ -143,8 +154,8 @@ public BSTNode&lt;T&gt; getMin(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <p>3.查找前驱节点</p>
+
 <div class="codehilite"><pre><span></span>// 节点的前驱: 节点左子树的最大节点getMax
 public BSTNode&lt;T&gt; getBefore(BSTNode&lt;T&gt; mRoot)
 {
@@ -157,8 +168,8 @@ public BSTNode&lt;T&gt; getBefore(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <p>4.查找后继节点</p>
+
 <div class="codehilite"><pre><span></span>// 节点的后继: 节点右子树的最小节点getMin
 public BSTNode&lt;T&gt; getAfter(BSTNode&lt;T&gt; mRoot)
 {
@@ -171,11 +182,13 @@ public BSTNode&lt;T&gt; getAfter(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <h2>从有序数组构造</h2>
+
 <p><strong>1. 如何构造</strong> <br>
 显然, 有序数组的中间元素mid = start + (end-start)/2 应该作为BST的mRoot根节点. 然后数组被分为两部分, 可以分别作为左子树和右子树进行递归构造.</p>
+
 <p><strong>2. 代码实现</strong> <br></p>
+
 <div class="codehilite"><pre><span></span>public BSTNode&lt;T&gt; arrayToBST(int[] a, int start, int end)
 {
     int mid = start + (end - start)/2;
@@ -187,19 +200,24 @@ public BSTNode&lt;T&gt; getAfter(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <p>构造过程的算法复杂度是O(N)</p>
+
 <p><strong>3. 构造gif </strong> <br>
 <img alt="构造" src="http://ww4.sinaimg.cn/large/7cc829d3gw1f62xl543k4g20b4074k0k.gif" /></p>
+
 <h2>插入</h2>
+
 <p><strong>1. 插入节点的过程</strong> <br></p>
+
 <ol>
 <li>若BST是空树, 则将插入节点作为根节点插入, 否则</li>
 <li>若插入节点的key等于根节点的值, 则返回, 否则</li>
 <li>若插入节点的值小于根节点的值, 则在左子树插入, 否则</li>
 <li>在右子树插入</li>
 </ol>
+
 <p><strong>2. 插入操作的代码实现</strong> <br></p>
+
 <div class="codehilite"><pre><span></span>public void insert(BSTree&lt;T&gt; bst, BSTNode&lt;T&gt; node)
 {
     int cmp;
@@ -225,14 +243,18 @@ public BSTNode&lt;T&gt; getAfter(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <p><strong>3. 插入gif</strong><br>
 <img alt="插入" src="http://ww2.sinaimg.cn/large/7cc829d3gw1f62xl5pbqbg20b4073jv8.gif" /></p>
+
 <h2>解析为有序数组</h2>
+
 <p>解析的过程实际上就是遍历, 为了得到有序数组, 可以采用中序遍历的方式进行, 每次遍历得到的元素存入数组(队列)中. <br>
 <img alt="解析" src="http://ww2.sinaimg.cn/mw690/7cc829d3gw1f62xlemwv0g209w0b4ar0.gif" /></p>
+
 <h2>扩展: 平衡二叉查找树</h2>
+
 <p>平衡二叉查找树是指任意节点的左右子树的深度之差不大于1(&lt;=1), 可以采用后序遍历的方式, 在遍历根节点前遍历完左右子树并纪录深度进行判断, 这样可以避免不必要的遍历重复:</p>
+
 <div class="codehilite"><pre><span></span>bool is_balanced(BSTree&lt;T&gt; bst)
 {
     if (bst.mRoot == null)
@@ -249,13 +271,14 @@ public BSTNode&lt;T&gt; getAfter(BSTNode&lt;T&gt; mRoot)
 }
 </pre></div>
 
-
 <h2>参考</h2>
+
 <ul>
 <li><a href="http://blog.jobbole.com/101366/">4 张 GIF 图帮助你理解二叉查找树</a></li>
 <li><a href="http://www.cnblogs.com/skywang12345/p/3576452.html#a2">二叉查找树java实现</a></li>
 <li><a href="http://blog.csdn.net/sgbfblog/article/details/7786698">将有序数组转化为平衡二叉搜索树</a></li>
 </ul>
+
         <div id="disqus_thread"></div>
         <script>
         /**

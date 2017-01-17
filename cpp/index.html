@@ -7,7 +7,9 @@
     </head>
     <body>
         <h1>我不知道的Cpp</h1>
+
 <h2>1. sizeof求函数空间占用</h2>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 <span class="kt">int</span> <span class="nf">function</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
@@ -20,23 +22,23 @@
 <span class="p">}</span>
 </pre></div>
 
-
 <p>报错:</p>
+
 <div class="codehilite"><pre><span></span><span class="n">error</span><span class="o">:</span> <span class="n">invalid</span> <span class="n">application</span> <span class="n">of</span> <span class="s1">&#39;sizeof&#39;</span> <span class="n">to</span> <span class="n">a</span> <span class="kd">function</span> <span class="n">type</span>
 </pre></div>
 
-
 <p>资料:</p>
+
 <div class="codehilite"><pre><span></span>http://stackoverflow.com/questions/4579574/how-can-i-get-the-size-of-a-c-function
 </pre></div>
 
-
 <p>结论:</p>
+
 <div class="codehilite"><pre><span></span>You Can&#39;t 😊
 </pre></div>
 
-
 <h2>2. union共用体的大小计算</h2>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 <span class="k">union</span> <span class="p">{</span>
@@ -51,10 +53,11 @@
 <span class="p">}</span>
 </pre></div>
 
-
 <p>答案: 24 <br/>
 关键字: 共用体空间按占用内存空间最长的类型对齐(倍数),如果不对齐则补齐. <br/></p>
+
 <h2>3. 用union判断系统是big endian还是little endian</h2>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 <span class="k">union</span> <span class="n">TEST</span> <span class="p">{</span>
@@ -74,11 +77,13 @@
 <span class="p">}</span>
 </pre></div>
 
-
 <p>我的电脑是little endian. bochs模拟的x86机子也是little endian,
 目前几乎所有的网络协议都是采用big endian的方式来传输数据的.</p>
+
 <h2>4. 预处理: do...while(0)的使用</h2>
+
 <p>使用do..while(0)相当于限定多行语句的宏, 避免替换为多行语句后产生错误</p>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 <span class="cp">#define FOO(x) do {</span>
@@ -93,10 +98,12 @@
 <span class="p">}</span>
 </pre></div>
 
-
 <h2>5. gcc预定义宏</h2>
+
 <p>有些宏还是很有作用的:)-&gt; https://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html</p>
+
 <h2>6. C和C++混合编程</h2>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 <span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="cp">#define TO_LITERAL(text) TO_LITERAL_(text)</span>
@@ -111,12 +118,14 @@
 <span class="p">}</span>
 </pre></div>
 
-
 <p>结果:
     a C++ program
     __cpluscplus expands to "1"</p>
+
 <p>如果是在C++中调用C代码, 则把C代码放到extern中. 谁叫C++是C的超集呢...</p>
+
 <h2>7.  结构体里也可以有访问控制</h2>
+
 <div class="codehilite"><pre><span></span>struct Student {
 public:
     ....
@@ -127,10 +136,12 @@ private:
 };
 </pre></div>
 
-
 <p>呃. 还是用类吧</p>
+
 <h2>8. 类对象存储空间的计算</h2>
+
 <h3>1. 空类</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
     /* <span class="mi">404</span> <span class="n">这里什么也没有</span> */
 };
@@ -139,9 +150,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">1</span>
 </pre></div>
 
-
 <p>虽然什么也没做, 但是声明了对象, 对象就存在, 存在则需存储, 占用1byte的空间 <br/></p>
+
 <h3>2. 只有成员变量的类的存储空间计算</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
     <span class="nb">int</span> <span class="n">length</span>, <span class="n">width</span>, <span class="n">height</span>;
 };
@@ -150,9 +162,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">12</span>
 </pre></div>
 
-
 <p>3个int型成员变量, 占用12byte的空间 <br/></p>
+
 <h3>3. 有成员变量和静态成员变量</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
     <span class="nb">int</span> <span class="n">length</span>, <span class="n">width</span>, <span class="n">height</span>;
     <span class="n">static</span> <span class="nb">int</span> <span class="nb">count</span>;
@@ -162,9 +175,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">12</span>
 </pre></div>
 
-
 <p>嗯, 所以静态成员变量是不占用对象的存储空间的, 而是在类创建后、对象初始化前就分配好内存了. <br/></p>
+
 <h3>4. 类中只有一个成员函数的存储空间计算</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
     <span class="nb">int</span> <span class="n">foo</span>();
 }
@@ -173,9 +187,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">1</span>
 </pre></div>
 
-
 <p>和空类对象一样, 所以成员函数是不占对象空间的. <br/></p>
+
 <h3>5. 类中构造函数、析构函数的空间占用情况</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
 <span class="n">public:</span>
     <span class="n">Cls</span>() {}
@@ -186,9 +201,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">1</span>
 </pre></div>
 
-
 <p>构造和析构函数是不占用对象的内存空间的. <br/></p>
+
 <h3>6. 类中有虚的析构函数的空间计算</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {
 <span class="n">public:</span>
     <span class="n">Cls</span>() {}
@@ -199,9 +215,10 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj</span>) =&gt; <span class="mi">8</span>
 </pre></div>
 
-
 <p>类中有一个或多个虚析构函数, 类需要维护指向虚函数表的指针, 64位机器上是8字节(地址)</p>
+
 <h3>7. 继承空类以及多重继承空类的存储空间计算</h3>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Cls</span> {};
 <span class="k">class</span> <span class="n">Cls2</span> {};
 <span class="k">class</span> <span class="n">Cls3</span> : <span class="n">public</span> <span class="n">Cls</span> {};
@@ -216,35 +233,40 @@ private:
 <span class="n">sizeof</span>(<span class="n">obj5</span>) =&gt; <span class="mi">1</span>
 </pre></div>
 
-
 <p>多重继承空类的对象, 仍然只占用1byte空间, 而virtual需要有指向虚函数表的指针,
 所以占用8byte空间.</p>
+
 <h2>9. this指针</h2>
+
 <p>每个对象的数据成员都分别占用存储空间, 但是<strong>不同对象的成员函数共享同一个函数代码段</strong>,
 代码段区分当前调用的成员时, 通过编译器隐式传入的this指针表示, 比如:</p>
+
 <div class="codehilite"><pre><span></span>size_t member_function() {
     return age;
 }
 </pre></div>
 
-
 <p>C++ 编译器会隐式的传入指向当前对象的this指针</p>
+
 <div class="codehilite"><pre><span></span>size_t member_function(Box* this) {
     return this-&gt;age
 }
 </pre></div>
 
-
 <p>所以 obj.member_function() 实际上是这样 obj.member_function(&amp;a) 调用的. 如此, 共享的代码段就知道当前调用的对象是哪个了. <br/>
 而静态成员函数是类创建后分配内存空间的, 与对象无关, 函数中也没有传入this指针.  所以通过</p>
+
 <div class="codehilite"><pre><span></span>obj.staic_member_function()
 </pre></div>
 
-
 <p>实际上是obj所属的类去调用. <br/></p>
+
 <h2>10. C++字符串和C字符串的转化</h2>
+
 <p>C++字符串通过String类实现; C字符串就是字符数组, 最后一个元素是'\0'标志着字符串的结尾. C++字符串末尾没有'\0', 本质上是以字符作为元素的vector特化版本;<br/></p>
+
 <p><strong>C++ -&gt; C</strong> <br/></p>
+
 <div class="codehilite"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;string&gt;</span><span class="cp"></span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
@@ -258,8 +280,8 @@ private:
 <span class="p">}</span>
 </pre></div>
 
-
 <p>注意, 因为cstr是一个指向str.c_str()内存区域的指针, str改变了, cstr也会改变, 显然我们不希望这样, 一个比较好的做法是把cstr的类容复制出来! <br/></p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

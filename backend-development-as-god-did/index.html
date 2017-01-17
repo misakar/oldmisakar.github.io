@@ -12,11 +12,15 @@
 3 神说，要有光，就有了光。 
 -- 《旧约》创世纪</p>
 </blockquote>
+
 <p>"要有光就有了光", 好潇洒! 多么希望我们后端开发者在开发的时候也能像上帝一样说一句: 我要mysql数据库, 我要redis...它们就安装好了跑在端口上等你...<br/>
 好吧, 其实我已经掌握了"上帝的魔力", 实现这种魔力的圣器就是docker! <br/></p>
+
 <h2>flask与docker-compose的魔法</h2>
+
 <p>有了docker-compose, 你只需要说明自己需要什么, 然后docker-compose build, 这些东西就会被安装到容器里运行. <br/>
 所以, 开发的时候定义一份 docker-compse.dev.yml 像上帝一样说自己想要什么.</p>
+
 <div class="codehilite"><pre><span></span>#-------------------- celery --------------------------
 celery:
     build: .
@@ -57,13 +61,13 @@ redis3:
         - &quot;7383:6383&quot;
 </pre></div>
 
-
 <p>flask应用跑在本地, 应用内部链接到容器运行的公有端口就行了.<br/>
 这样仅仅需要安装flask扩展, 既可以利用flask hot reload和debug特性, 不用频繁rebuild容器, 又可以免去了繁琐的环境重复安装! <br/>
 不过不太好的一点, 如果你修改了环境相关的代码, 需要rebuild环境容器. <br/>
 测试、部署的时候, 把开发时跑在本地的flask应用打包到容器里, 就OK啦. <br/>
 自从有了docker/docker-compose, 匣子每天都要部署迭代好几次, 因为好用到开心啊, 写生产代码都有动力了! <br/>
 好吧, 这是一篇docker安利文, bye.</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

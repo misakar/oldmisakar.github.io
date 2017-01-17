@@ -7,9 +7,12 @@
     </head>
     <body>
         <h2>基本的flask权限管理</h2>
+
 <h3>1. 验证字段与密码的存储</h3>
+
 <p>权限管理的基础就是验证字段(用户名or邮箱...)以及密码,
 所以首先需要考虑验证字段和密码的存储。(这里使用flask-sqlalchemy作为ORM)</p>
+
 <div class="codehilite"><pre><span></span><span class="n">model</span><span class="o">:</span><span class="n">User</span>
 
 <span class="kd">class</span> <span class="n">User</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">Model</span><span class="o">):</span>
@@ -45,10 +48,11 @@
         <span class="k">return</span> <span class="n">werkzeug</span><span class="o">.</span><span class="na">security</span><span class="o">.</span><span class="na">check_password_hash</span><span class="o">(</span><span class="n">password</span><span class="o">)</span>
 </pre></div>
 
-
 <h3>2. 用户权限与角色的设置</h3>
+
 <p>我一般将用户权限设置为16进制的值, 而用户角色则是用户权限(16进制的值)的<strong>异或(|)</strong>运算,
 比如我设置以下2个权限:</p>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">Permission:</span>
     <span class="s">&quot;&quot;&quot;</span>
 <span class="s">    权限表</span>
@@ -57,8 +61,8 @@
     <span class="n">MODERATE_COMMENT</span> = <span class="mh">0x02</span>  <span class="c c-Singleline"># 移除评论</span>
 </pre></div>
 
-
 <p>那么可设置如下角色, 并建立和User的<strong>多对一</strong>关系:</p>
+
 <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="nb">Role</span>(<span class="n">db</span>.<span class="n">Model</span>):
     <span class="s">&quot;&quot;&quot;</span>
 <span class="s">    用户角色</span>
@@ -96,24 +100,29 @@
             <span class="n">db</span>.<span class="n">session</span>.<span class="n">commit</span>()
 </pre></div>
 
-
 <p>现在只需在User里创建一个指向用户角色的外键即可</p>
+
 <div class="codehilite"><pre><span></span>calss User(db.Model):
     ......
     role_id = db.Column(db.Integer, db.ForeignKey(&#39;role.id&#39;))
     ......
 </pre></div>
 
-
 <h2>flask权限在具体场景中的应用</h2>
+
 <p>应用在具体场景, 使用相关扩展就不可避免了</p>
+
 <h3>1. 处理登录(flask-login)</h3>
+
 <p>对于flask登录,使用flask-login是较为简单的办法,
 但是个人感觉<code>flask-login</code>不是很灵活(下面的扩展也是,
 毕竟扩展的目的是通用)。<br/>
 这里就不具体说明<a href="https://flask-login.readthedocs.org/en/latest/">如何集成flask-login了</a>,主要说如何使用</code>flask-login</code><br/></p>
+
 <h4>用户登录</h4>
+
 <p>使用flask-login提供的<code>login_user</code>, <code>current_user</code></p>
+
 <div class="codehilite"><pre><span></span>@auth.route(&#39;/login/&#39;, methods=[&quot;POST&quot;, &quot;GET&quot;])
 def login():
     &quot;&quot;&quot;用户登录&quot;&quot;&quot;
@@ -128,9 +137,10 @@ def login():
     return render_template(&quot;login.html&quot;, form=form, next=next)
 </pre></div>
 
-
 <h4>用户登出</h4>
+
 <p>使用flask-login提供的<code>logout_user</code></p>
+
 <div class="codehilite"><pre><span></span>@login_required
 @auth.route(&#39;/logout/&#39;)
 def logout():
@@ -139,18 +149,23 @@ def logout():
     return redirect(&quot;重定向路由&quot;)
 </pre></div>
 
-
 <h3>2. 处理HTTPBasicAuth(flask-httpauth)</h3>
+
 <p><a href="http://flask-httpauth.readthedocs.org/en/latest/">flask-httpauth</a> 可以帮助我们处理一些基本的权限管理,
 同flask-login一样, flask-httpauth 也提供了一个<strong>login_required</strong>装饰器,
 通过auth对象调用即可控制<strong>用户名, 密码</strong>的登录权限控制。</p>
+
 <h4>token权限管理</h4>
+
 <p>这里比较复杂的地方就是token的权限管理了, 因为此处没有拓展可用(扩展是为了通用性, 但是token不是强制使用的),
 都是自己踩坑弄出来的, 写在博客里做一个纪录。</p>
+
 <h5>什么是token</h5>
+
 <p>token是用户信息(一般是用户id,
 具有唯一标识作用)的标识。对用户id进行签名加密(我一般使用itsdangerous模块),
 例如:</p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">itsdangerous</span> <span class="kn">import</span> <span class="n">TimedJSONWebSignatureSerializer</span> <span class="k">as</span> <span class="n">Serializer</span>
 
 <span class="c1"># 此函数为User类的成员函数</span>
@@ -163,8 +178,8 @@ def logout():
     <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">})</span>
 </pre></div>
 
-
 <h5>为什么需要token</h5>
+
 <p>token 一般使用在API的场景中, 此时<strong>客户端和服务器端是分离的</strong>,
 数据信息通过API进行传递, 他人很容易就可以拦截API并获取验证头部的<strong>authorization</strong>字段,
 从而获取用户名和密码(一般是base64进行了加密, 但是很容易被破解), 这样是极不安全的。<br/>
@@ -173,15 +188,19 @@ def logout():
 用获取的token放在API头部进行传递, 这样即使被拦截,
 也不会获取用户的敏感信息(用户名, 密码), 即使token被他人使用,
 也会因为token的寿命而使破坏性大大降低。</p>
+
 <h5>token的使用: 发送token</h5>
+
 <p>token需放在<strong>Authorization</strong>头部, 采用如下形式发送:</p>
+
 <div class="codehilite"><pre><span></span>&quot;Basic token&quot;
 </pre></div>
 
-
 <h5>token的使用: 解析token</h5>
+
 <p>依然采用<strong>itsdangerous</strong>模块, 这里<strong>密钥</strong>就很重要了,
 只有与加密相同的密钥才可以解析token。</p>
+
 <div class="codehilite"><pre><span></span># User类的一个静态成员函数
 @staticmethod
 def verify_auth_token(token):
@@ -195,10 +214,12 @@ def verify_auth_token(token):
     return User.query.filter_by(id=data[&#39;id&#39;])
 </pre></div>
 
-
 <h6>基于token的权限管理</h6>
+
 <p>这里主要是区别普通用户和管理员用户, 因为有些特定的操作是只有管理员可以进行的。<br/></p>
+
 <p>1.在User类里添加管理员判断函数 <br/></p>
+
 <div class="codehilite"><pre><span></span>def can(self, permission):
     # 判断用户是否具备某权限
     return self.role is not None and (self.role.permissions &amp; permissions) = permissions
@@ -208,8 +229,8 @@ def is_adminstractor(self):
     return self.can(Permission.COMMENT | Permission.MODERATE_COMMENT)
 </pre></div>
 
-
 <p>2.创建<strong>管理员权限判断装饰器</strong><br/></p>
+
 <div class="codehilite"><pre><span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
 <span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">request</span><span class="p">,</span> <span class="n">g</span>
 
@@ -227,14 +248,16 @@ def is_adminstractor(self):
     <span class="k">return</span> <span class="n">decorator</span>
 </pre></div>
 
-
 <p>然后就可以使用<strong>admin_required</strong>装饰器进行权限管理了,
 这里有个坑提一下就是<strong>flask-httpauth</strong>会自己添加Basic,
 所以使用该扩展的地方就不必考虑token格式的问题了。</p>
+
 <h2>总结</h2>
+
 <p>flask权限管理比较烦的地方就是如何使不同的权限管理扩展一起工作,
 以及使用了扩展以后对于定制自己的东西该如何写,
 这时候还是最好去看使用相应扩展的源码, 然后以此为基础, 展开自己的工作吧！</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

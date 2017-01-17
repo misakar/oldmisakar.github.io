@@ -10,8 +10,11 @@
 date: 2016-02-08
 category: ['Database']
 tags: ['python', 'redis']</p>
+
 <h2>redis 简介</h2>
+
 <p><a href="https://github.com/antirez/redis">re(mote)di(ctionary)s(erver)</a>是NoSql数据库中的<a href="http://baike.baidu.com/subview/359944/11208033.htm">一朵奇葩(古意)</a>, 他具有以下主要特点:</p>
+
 <ol>
 <li>以<strong>字典结构存储数据</strong></li>
 <li>允许通过<strong>TCP协议</strong>读取字典的内容</li>
@@ -19,26 +22,33 @@ tags: ['python', 'redis']</p>
 <li>支持使用<strong>列表</strong>的形式构造<strong>任务队列</strong></li>
 <li><strong>数据存储在内存</strong>中也可以<strong>持久化到硬盘</strong></li>
 </ol>
+
 <p>看到以上特点, 第一感觉就是redis很灵活, 很强大, 既可内存快速存取,
 又可持久化到硬盘; 其次, 我想很多pythoner都会会心一笑, 是的redis和python可以说是有天然的联系,
 都具有列表, 字典等数据结构, 如果接口设计的好,那么在python中使用redis可以说是特别舒服的。
 基于TCP协议,可以让我们实现远程连接,
 本地python代码无缝操作redis。是不是很激动!!!! 我下面就会介绍这样一个强大的工具<strong>redis-py</strong>, 当然我还是先详细说一下redis。</p>
+
 <h2>安装redis</h2>
+
 <h3>linux:</h3>
+
 <ol>
 <li><code>wget http://download.redis.io/releases/redis-2.6.16.tar.gz</code></li>
 <li><code>tar -xzvf redis-2.6.16.tar.gz</code></li>
 <li><code>cd redis-2.6.16</code></li>
 <li><code>make &amp;&amp; make install</code></li>
 </ol>
+
 <h3>mac os:</h3>
+
 <p>强大的homebrew!</p>
+
 <div class="codehilite"><pre><span></span>brew install redis
 </pre></div>
 
-
 <p>redis安装在<code>/usr/local/bin/</code>目录</p>
+
 <div class="codehilite"><pre><span></span>redis-benchmark: ==&gt; 性能测试工具
 redis-check-aof: ==&gt; AOF文件修复工具
 redis-check-dump: =&gt; RDB文件检查工具
@@ -47,66 +57,83 @@ redis-sentinel:   =&gt; 帮助管理redis实例的工具
 redis-server:    ==&gt; redis服务器
 </pre></div>
 
-
 <h2>启动redis</h2>
+
 <h3>直接启动:</h3>
+
 <ol>
 <li><code>redis-server</code> 默认端口<a href="http://blog.nosqlfan.com/html/790.html">6379</a></li>
 <li><code>redis-server --port 端口号</code></li>
 <li><code>redis-server /abspath/to/config.conf --loglevel
    warning</code>启动时的配置文件将覆盖系统同名配置项</li>
 </ol>
+
 <p><img alt="redis run" src="http://7xj431.com1.z0.glb.clouddn.com/redis" /></p>
+
 <h3>redis命令行客户端连接:</h3>
+
 <div class="codehilite"><pre><span></span>redis-cli -h IP -p 端口
 </pre></div>
 
-
 <h2>5种数据类型</h2>
+
 <h3>0. 基础命令</h3>
+
 <p>从命令行客户端连接上redis后, 会出现类似python的REPL接口,
 我们可以在此对redis的数据进行操作。</p>
+
 <h4>返回符合规则(通配符)的键值列表</h4>
+
 <div class="codehilite"><pre><span></span>&gt; KEYS pattern
 </pre></div>
 
-
 <h4>判断键(ex:key)是否存在, 存在返回1, 不存在返回0</h4>
+
 <div class="codehilite"><pre><span></span>&gt; EXISTS key
 </pre></div>
 
-
 <h4>删除键(ex:key)</h4>
+
 <p>可以同时删除多个键, 返回成功删除键的个数</p>
+
 <div class="codehilite"><pre><span></span>&gt; DEL key
 </pre></div>
 
-
 <h4>获取值的数据类型</h4>
+
 <div class="codehilite"><pre><span></span>&gt; SET key 1
 OK
 &gt; TYPE key
 string
 </pre></div>
 
-
 <p>再说一次, 有么有和python很像!!!</p>
+
 <h3>1. 字符串类型</h3>
+
 <h3>2. 散列类型</h3>
+
 <h3>3. 列表类型</h3>
+
 <h3>4. 集合类型</h3>
+
 <h3>5. 有序集合</h3>
+
 <h2>redis-py</h2>
+
 <p>redis-py是一个强大的工具, 可以使用它从而在python代码中实现类似redis的语法,
 它提供了两个类: <em>StrictRedis</em>和<em>Redis</em>, Redis类是StrictRedis的子类,
 用于兼容旧的redis语法。</p>
+
 <h3>安装 redis-py</h3>
+
 <div class="codehilite"><pre><span></span>$ pip install redis
 </pre></div>
 
-
 <h3>使用 redis-py</h3>
+
 <p>直接使用:</p>
+
 <div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">redis</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">StrictRedis</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;hostname&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">)</span>
@@ -115,8 +142,8 @@ string
 <span class="s1">&#39;value&#39;</span>
 </pre></div>
 
-
 <p>创建连接池:</p>
+
 <div class="codehilite"><pre><span></span><span class="c1"># 创建连接池的好处在于这样就不用每创建(销毁)一个redis实例就进行一次数据库的连接(释放),</span>
 <span class="c1"># 一个redis连接池可以管理多个redis实例(线程)</span>
 <span class="kn">import</span> <span class="nn">redis</span>
@@ -126,20 +153,24 @@ string
 <span class="c1"># 然后就可以使用r对象啦!</span>
 </pre></div>
 
-
 <p>pipeline机制:</p>
+
 <h2>总结:</h2>
+
 <p>这篇博客是我从一个<strong>学习者</strong>角度写作的, 接下来我会继续我的redis学习,
 但是会逐渐把目光放到<strong>生产环境</strong>,
 即作为一个<strong>使用者</strong>。redis在生产环境中的使用就不得不说<strong>配置文件</strong>,
 这也是一个头大的问题...后面还会总结一下相关的redis应用实例[期待]。
 <hr/></p>
+
 <blockquote>
 <p>其实一开始我是拒绝redis的</p>
 </blockquote>
+
 <p>一开始我是因为flask, 准备使用redis, 但是直接从使用出发, 你懂得,
 什么celery任务队列, 看不明白。现在才知道, 这么大块知识那时没有了解...
 而且这次写CCNU爬虫, 在flask里面就很好地使用了redis(ps: 纯python写, 视图封装...), 感受到了redis的强大。</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

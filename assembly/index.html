@@ -9,11 +9,16 @@
         <p><img alt="magic" src="http://7xj431.com1.z0.glb.clouddn.com/images-5.jpeg" /><br/>
 <strong>Welcome to a Magic World !</strong>
 <hr/></p>
+
 <h2>前记: 如何拿到了神秘世界大门的🔑</h2>
+
 <p>最近在学习操作系统, 仿照实例编写一个<strong>类linux x86架构32bit</strong>的微型操作系统neox。加载操作系统后(详细过程见<a href="http://neo1218.github.io/computer">这篇文章</a>), 首先需要将kernel加载进内存, 而这个代码需要使用汇编来写。 于是, 我决定进入这个神秘世界一探究竟。下面是我从汇编王国游历归来的一些见闻。<br/>
 <img alt="王国" src="http://7xj431.com1.z0.glb.clouddn.com/images-6.jpeg" /></p>
+
 <h2>Assembly 王国游记</h2>
+
 <h3>1. 一个建立在特定架构上的强大王国</h3>
+
 <p>Assembly王国是一个邦联制国家,
 是基于特定架构的公国组成的分散联盟。这个王国和高级语言国家不同,
 它具有[通灵]的能力, 可以直接与计算机硬件世界沟通, 我曾在一次王国祭祀中,
@@ -22,18 +27,23 @@
 当然, 每个公国祭祀的神灵也有不同, 比如[x86 32bit公国]祭祀的通用寄存器之神有4位(EAX,
 EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
 这个王国的神和这个王国一样神秘。</p>
+
 <h3>2. Assembly王国独特的语言-助记符语法规则</h3>
+
 <p><img alt="语言" src="http://7xj431.com1.z0.glb.clouddn.com/asm" /><br/>
 图片是我经过一个[vagrant神柱]时拍摄的,
 上面雕刻了这个王国的语言。这个王国的语言是实现强大[通灵]能力的关键,
 原来汇编语言就是[神之世界机器语言]的助记!</p>
+
 <ol>
 <li>用助记符代替操作码</li>
 <li>用地址符号(Symbol)或标号(Lable)代替地址码</li>
 </ol>
+
 <p>再借由大祭司们强大的[汇编程序]魔法就可以翻译成机器语言, 从而与硬件神灵们交流!!!
 <br/>
 我想再详细介绍一下[神之通灵汇编语法], 汇编语法由如下几类指令组成:</p>
+
 <ol>
 <li><strong>数据传送指令</strong><ol>
 <li>通用数据传送指令<ul>
@@ -84,7 +94,8 @@ EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
 </ul>
 </li>
 </ol>
-</li>
+
+<p></li>
 <li><strong>算术指令</strong><ol>
 <li>加法指令<ul>
 <li>ADD  =&gt; 加法<ul>
@@ -162,16 +173,20 @@ EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
 <li>HLT =&gt; 使机器暂停工作，使处理器CPU处于停机状态，以等待一次外部中断到来，中断结束后，程序继续执行，CPU继续工作。</li>
 </ul>
 </li>
-</ol>
+</ol></p>
+
 <p>这[通灵汇编语言]相较于常人的高级语言的确难懂!
 也难怪使用汇编语言的人可以与[神明]交流</p>
+
 <h3>3. 逛神庙时发现的一个神秘卷轴</h3>
+
 <p>因为我尝试学习编写的操作系统是[x86 32bit]架构, 所以我此行有2/3的时间在[x86 32bit公国]度过。那段时间正好是公国的祭祀周, 到处都是象征着[万神之神CPU]的图腾
 <img alt="图腾" src="http://7xj431.com1.z0.glb.clouddn.com/images-8.jpeg" /><br/>
 有一次, 经过一个[寄存器神庙]的时候,
 看到一群人围着一个金光闪闪的卷轴在讨论着什么, 于是我便凑了上去。
 原来这个卷轴上写满了Assembly语言奇奇怪怪的符号, 我便把这些符号抄写在了vim上(vim是Assembly王国通用的记载工具类似纸张)。回到家中,
 我拿出vim开始解读(注释部分就是我的解读)</p>
+
 <div class="codehilite"><pre><span></span><span class="n">global</span> <span class="n">_start</span><span class="p">,</span> <span class="n">_kmain</span>  <span class="p">;</span><span class="o">--</span> <span class="n">global</span> <span class="err">标记着程序的开始</span> <span class="o">--</span>
 <span class="p">;</span> <span class="o">--</span> <span class="err">一系列的全局变量</span> <span class="o">--</span>
 <span class="p">;</span> <span class="o">--</span> <span class="n">ctors</span><span class="p">(</span><span class="err">保存着程序中全局构造函数的指针数组</span><span class="p">)</span>
@@ -230,16 +245,18 @@ EBX, ECX, EDX)。这里就不详细解释这个国家的神学了,
         <span class="n">hlt</span> <span class="p">;</span> <span class="n">halt</span> <span class="n">the</span> <span class="n">CPU</span>
 </pre></div>
 
-
 <p>原来这个卷轴上的符号是加载强大操作系统内核(call kmain)的汇编! <br/>
 就在我迷迷糊糊, 仿佛读懂的那刹那, 突然狂风大作, 天降真神!!!
 原来是[CPU大神]显灵了!!!<br/>
 <img alt="cpu大神" src="http://7xj431.com1.z0.glb.clouddn.com/cpu" /><br/>
 然后CPU大神微笑着对我说:"你个泼猴"...</p>
+
 <h2>后记:</h2>
+
 <p>等我醒来的时候, 我已经回到了家中。(但这不是梦!!
 因为我手上还拿着vim!!)。这次Assembly王国探险的经历让我知道了自然世界的伟大,
 原来计算机的宇宙还有这么多不为我知的角落, 不要停下脚步, 继续出发吧!</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

@@ -7,8 +7,11 @@
     </head>
     <body>
         <h1>常见shell需求总结</h1>
+
 <p>这两天把自己的一个Python项目用shell改写, 这里记录项目中遇到的一些基本需求</p>
+
 <h2>1. shell 函数</h2>
+
 <div class="codehilite"><pre><span></span>function func_name()
 {
     func_body
@@ -17,9 +20,9 @@
 func_name  # 调用
 </pre></div>
 
-
 <p>function 关键字可以省略 <br/>
 <strong>函数接受参数</strong> <br/></p>
+
 <div class="codehilite"><pre><span></span>function hello()
 {
     echo &quot;Hello $1&quot;
@@ -28,21 +31,21 @@ func_name  # 调用
 hello &quot;neo1218&quot;  # 调用
 </pre></div>
 
-
 <p>$0 代表函数本身, $1-9 依顺序代表参数, 10个以上需要 ${10} 调用。<br/>
 函数的返回值只能是0~255
 <br/>
 <strong>常用函数</strong> <br/>
 1. <strong><em>log 函数</em></strong> <br/></p>
+
 <div class="codehilite"><pre><span></span>function log()
 {
     printf &quot; \033[36m%10s\033[0m: \033[90m%s\033[0m\n&quot; $1 $2
 }
 </pre></div>
 
-
 <p>这里和Linux终端特殊颜色字符使用, 使log更"好看" <br/>
 2. <strong><em>error_exit 函数</em></strong> <br/></p>
+
 <div class="codehilite"><pre><span></span>function error_exit()
 {
     echo $ 2&gt;&amp;1
@@ -50,13 +53,13 @@ hello &quot;neo1218&quot;  # 调用
 }
 </pre></div>
 
-
 <p>exit 表示退出状态, exit 0 表示成功退出, 非0表示异常退出.<br/>
 这里还有一个很有意思的地方: 2&gt;&amp;1 <br/>
 这里的1是<code>stdout</code> , 2是<code>stderr</code>, 2&gt;&amp;1 就是将标准错误重定向到标准输出,
 用于错误处理。 <br/>
 3. <strong><em>help 系列函数</em></strong> <br/>
 即显示信息的函数<br/></p>
+
 <div class="codehilite"><pre><span></span>function display_msg()
 {
     cat &lt;&lt;-EOF
@@ -66,14 +69,15 @@ EOF
 }
 </pre></div>
 
-
 <p>这样就可以很好的在终端显示信息啦 <br/>
 4. <strong><em>其他</em></strong> </br>
 shell函数还有一个很有意思的特性, 关于shell的作用域,
 即函数中可以直接对全局变量进行修改, 这样就可以很方便的在不同函数中调用全局状态,
 对于简单的面向过程程序是非常友好的。<br/>
 当然也可以在函数中定义局部变量<code>local lvar</code></p>
+
 <h2>2. shell数组</h2>
+
 <p>shell支持数组的使用, 但是索引是从1开始...<br/>
 1. <strong>定义数组</strong> <br/>
 array=()
@@ -87,7 +91,9 @@ ${#array[@]}
 4. <strong>获取数组最后一个元素</strong> <br/>
 ${array[${#array[@]}]}
 <br/></p>
+
 <h2>3. shell 判断</h2>
+
 <p>shell支持一系列的判断 <br/>
 1. <strong>判断路径是否存在</strong> <br/>
 <code>if test -d "$path"</code>
@@ -97,17 +103,21 @@ ${array[${#array[@]}]}
 <br/>
 3. <strong>判断是否存在参数</strong> <br/>
 <code>if test $# -eq 0</code></p>
+
 <h2>4. case 语句</h2>
+
 <p>shell 支持case语句 </br></p>
+
 <div class="codehilite"><pre><span></span><span class="x">case </span><span class="p">$</span><span class="nv">var</span><span class="x"> in</span>
 <span class="x">    xxx)  do sth ;;</span>
 <span class="x">    xx|xxx) do sth ;;</span>
 <span class="x">esac</span>
 </pre></div>
 
-
 <h2>5. 处理用户参数</h2>
+
 <p>由于c是命令, 所以处理用户参数就是必须的, 这里给个总结模版</p>
+
 <div class="codehilite"><pre><span></span><span class="x">if test </span><span class="p">$</span><span class="err">#</span><span class="x"> -eq 0; then</span>
 <span class="x">    do sth</span>
 <span class="x">else</span>
@@ -125,15 +135,18 @@ ${array[${#array[@]}]}
 <span class="x">fi</span>
 </pre></div>
 
-
 <h2>6. 其他</h2>
+
 <ol>
 <li><strong>$?</strong> 用于获取最近的返回值 <br/></li>
 <li><strong>赋值变量与被赋值变量中间的等号不含空格</strong> <br/></li>
 </ol>
+
 <h2>总结</h2>
+
 <p>从python到shell, 是想挑战一下, 而且shell的速度快,
 直接shell执行。像这种命令式面向过程的程序是很适合用shell编写的。</p>
+
         <div id="disqus_thread"></div>
         <script>
         /**

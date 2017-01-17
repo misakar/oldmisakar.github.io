@@ -7,8 +7,11 @@
     </head>
     <body>
         <h1>Python尾递归优化</h1>
+
 <h2>一般递归与尾递归</h2>
+
 <h4>一般递归:</h4>
+
 <div class="codehilite"><pre><span></span>def normal_recursion(n):
     if n == 1:
         return 1
@@ -16,8 +19,8 @@
         return n + normal_recursion(n-1)
 </pre></div>
 
-
 <p>执行：</p>
+
 <div class="codehilite"><pre><span></span>normal_recursion(5)
 5 + normal_recursion(4)
 5 + 4 + normal_recursion(3)
@@ -29,11 +32,13 @@
 15
 </pre></div>
 
-
 <p>可以看到, 一般递归, 每一级递归都需要调用函数, 会创建新的栈,
 随着递归深度的增加, 创建的栈越来越多, 造成爆栈💥 </p>
+
 <h4>尾递归</h4>
+
 <p><a href="https://zh.wikipedia.org/wiki/%E5%B0%BE%E8%B0%83%E7%94%A8">尾递归基于函数的尾调用</a>, 每一级调用直接返回函数的返回值更新调用栈,而不用创建新的调用栈, 类似迭代的实现, 时间和空间上均优化了一般递归!</p>
+
 <div class="codehilite"><pre><span></span>def tail_recursion(n, total=0):
     if n == 0:
         return total
@@ -41,8 +46,8 @@
         return tail_recursion(n-1, total+n)
 </pre></div>
 
-
 <p>执行：</p>
+
 <div class="codehilite"><pre><span></span>tail_recursion(5)
 tail_recursion(4, 5)
 tail_recursion(3, 9)
@@ -52,11 +57,13 @@ tail_recursion(0, 15)
 15
 </pre></div>
 
-
 <p>可以看到, 每一级递归的函数调用变成"线性"的形式. </p>
+
 <h2>深入理解尾递归</h2>
+
 <p>呃, 所以呢? 是不是感觉还不够过瘾... 谁说尾递归调用就不用创建新的栈呢?
 还是让我们去底层一探究竟吧<br/></p>
+
 <div class="codehilite"><pre><span></span>int tail_recursion(int n, int total) {
     if (n == 0) {
         return total;
@@ -73,27 +80,33 @@ int main(void) {
 }
 </pre></div>
 
-
 <p><strong>反汇编</strong> <br/></p>
+
 <ul>
 <li><code>$ gcc -S tail_recursion.c -o normal_recursion.S</code></li>
 <li><code>$ gcc -S -O2 tail_recursion.c -o tail_recursion.S</code> gcc开启尾递归优化</li>
 </ul>
+
 <p>对比反汇编代码如下(AT&amp;T语法) <br/>
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20724681/24cfaffe-b6aa-11e6-85f8-fee65848f533.png" /></p>
+
 <p>可以看到, 开启尾递归优化前, 使用call调用函数, 创建了新的调用栈(LBB0_3);
 而开启尾递归优化后, 就没有新的调用栈生成了, 而是直接pop
 bp指向的<code>_tail_recursion</code>函数的地址(pushq %rbp)然后返回,
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20724912/13fc5b22-b6ab-11e6-84db-80126d4601a6.png" />
 仍旧用的是同一个调用栈!</p>
+
 <h2>存在的问题</h2>
+
 <p>虽然尾递归优化很好, 但python 不支持尾递归，递归深度超过1000时会报错</p>
+
 <div class="codehilite"><pre><span></span><span class="n">RuntimeError</span><span class="o">:</span> <span class="n">maximum</span> <span class="n">recursion</span> <span class="n">depth</span> <span class="n">exceeded</span>
 </pre></div>
 
-
 <h2>一个牛人想出的解决办法：</h2>
+
 <h4>实现一个 tail_call_optimized 装饰器</h4>
+
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -201,13 +214,17 @@ bp指向的<code>_tail_recursion</code>函数的地址(pushq %rbp)然后返回,
 </td></tr></table>
 
 <p>为了更清晰的展示开启尾递归优化前、后调用栈的变化和tail_call_optimized装饰器抛异常退出递归调用栈的作用, 我这里利用<a href="https://github.com/inducer/pudb">pudb调试工具</a>做了动图 <br/></p>
+
 <p>开启尾递归优化前的调用栈 <br/>
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20725973/b4e5d060-b6ae-11e6-9116-265cdd871b36.gif" /> <br/>
 开启尾递归优化后(tail_call_optimized装饰器)的调用栈 <br/>
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/20726110/1cfc8568-b6af-11e6-9817-1257b4c482f1.gif" /> <br/></p>
+
 <p>通过pudb右边栏的stack, 可以很清晰的看到调用栈的变化. <br/>
 因为尾递归没有调用栈的嵌套, 所以Python也不会报<code>RuntimeError: maximum recursion depth exceeded</code>错误了! <br/></p>
+
 <p>这里解释一下 sys._getframe() 函数:<br/></p>
+
 <div class="codehilite"><pre><span></span><span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">([</span><span class="n">depth</span><span class="p">]):</span>
 <span class="n">Return</span> <span class="n">a</span> <span class="n">frame</span> <span class="nb">object</span> <span class="kn">from</span> <span class="nn">the</span> <span class="nn">call</span> <span class="nn">stack.</span>
 <span class="n">If</span> <span class="n">optional</span> <span class="n">integer</span> <span class="n">depth</span> <span class="ow">is</span> <span class="n">given</span><span class="p">,</span> <span class="k">return</span> <span class="n">the</span> <span class="n">frame</span> <span class="nb">object</span> <span class="n">that</span> <span class="n">many</span> <span class="n">calls</span> <span class="n">below</span> <span class="n">the</span> <span class="n">top</span> <span class="n">of</span> <span class="n">the</span> <span class="n">stack</span><span class="o">.</span>
@@ -225,8 +242,8 @@ bp指向的<code>_tail_recursion</code>函数的地址(pushq %rbp)然后返回,
     <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span> <span class="c1"># 调用者的帧</span>
 </pre></div>
 
-
 <p>更多关于<code>sys._getframe</code>请看<a href="http://feihonghsu.com/secrets/framehack/index.html#crazy-monkey-patching-lxml">Frame Hacks</a></p>
+
         <div id="disqus_thread"></div>
         <script>
         /**
