@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>neox2</title>
     </head>
     <body>
@@ -14,27 +17,26 @@
 
 <p>我去年寒假(很久以前...)写过一篇博客:《计算机是如何启动的》, 我说到了计算机启动的大致过程</p>
 
-<p>```
-let's BOOTstrap ! |||||||||||||||||||||||||||!!!!!!!!!!!!!</p>
+<div class="codehilite"><pre><span></span>let&#39;s BOOTstrap ! |||||||||||||||||||||||||||!!!!!!!!!!!!!
 
-<p>计算机的启动(BOOT)就是很自然的把以上概念串联起来的过程。在BOOT的过程中需要注意顺序和控制权这两个概念。
-第一阶段: BIOS</p>
+计算机的启动(BOOT)就是很自然的把以上概念串联起来的过程。在BOOT的过程中需要注意顺序和控制权这两个概念。
+第一阶段: BIOS
 
-<p>控制权: BIOS
+控制权: BIOS
 计算机接通电源后, 读取固化(比如烧录)到ROM芯片上的BIOS程序。首先计算机会进行硬件带电自检, 如果硬件出现问题, 启动终止, 主板发出蜂鸣;如果一切正常, 屏幕上会显示CPU,内存信息。
-初始化和检测完成后, BIOS需要把控制权交给下一阶段启动程序,这可以在BIOS启动顺序列表中设置, 比如安装ubuntu时设置先从U盘启动。</p>
+初始化和检测完成后, BIOS需要把控制权交给下一阶段启动程序,这可以在BIOS启动顺序列表中设置, 比如安装ubuntu时设置先从U盘启动。
 
-<p>第二阶段: MBR</p>
+第二阶段: MBR
 
-<p>控制权: 优先启动的存储设备
-这时计算机读取该设备第一个扇区的512个字节, 如果最后两个字节是0x55和0xAA, 则可以启动。如果不是, 则将控制权转给BIOS启动顺序列表中的下一个启动设备。</p>
+控制权: 优先启动的存储设备
+这时计算机读取该设备第一个扇区的512个字节, 如果最后两个字节是0x55和0xAA, 则可以启动。如果不是, 则将控制权转给BIOS启动顺序列表中的下一个启动设备。
 
-<p>第三阶段: 硬盘启动</p>
+第三阶段: 硬盘启动
 
-<p>控制权: 硬盘中的某个分区
-这里又分三种情况:</p>
+控制权: 硬盘中的某个分区
+这里又分三种情况:
 
-<p>读取激活分区的第一个扇区(卷引导纪录), 加载操作系统
+读取激活分区的第一个扇区(卷引导纪录), 加载操作系统
 扩展分区和逻辑分区
 硬盘有4个主分区
 有且仅有一个区可以定义为扩展分区
@@ -42,11 +44,11 @@ let's BOOTstrap ! |||||||||||||||||||||||||||!!!!!!!!!!!!!</p>
 计算机首先会读取扩展分区的第一个扇区(扩展引导纪录), 然后读取第二个逻辑分区的第一个扇区,在从里面的分区表中读取第三个逻辑分区的位置, 依次进行下去。
 控制权: 启动管理器
 直接将控制权交给事先安装的启动管理器, 由用户选择启动的操作系统
-第四阶段: 操作系统</p>
+第四阶段: 操作系统
 
-<p>控制权: 操作系统
+控制权: 操作系统
 操作系统的内核会被首先载入内存, 然后执行操作系统规划好的程序, 启动完成。
-```</p>
+</pre></div>
 
 <h3>更细致的理解</h3>
 
@@ -69,23 +71,98 @@ let's BOOTstrap ! |||||||||||||||||||||||||||!!!!!!!!!!!!!</p>
 还是因为实模式, 实模式下(20位地址总线)最多可以访问1MB内存(2^20), 而bios的起始地址是0xffff0, 距离1MB的结束地址0xfffff只剩1个字节了, 自然放不下bios程序, 所以通过跳转来另辟蹊径. 至于为什么从0xffff0开始, 因为之前的内存有分配了:) </br>
 实模式下的内存布局</br></p>
 
-<p>| 起始 | 结束 | 大小 | 用途 |
-| ---- | ---- | ---- | ---- |
-| FFFF0 | FFFFF | 16B | BIOS的入口地址 |
-| F0000 | FFFEF | 64KB-16B | 顶部的640KB字节 |
-| C8000 | EFFFF | 160KB    | 映射硬件适配器的ROM或者内存映射式I/O |
-| C0000 | C7FFF | 32KB     | 显示适配器BIOS |
-| B8000 | BFFFF | 32KB     | 用于文本模式显示适配器 |
-| B0000 | B7FFF | 32KB     | 用于黑白显示适配器 |
-| A0000 | AFFFF | 64KB     | 用于彩色显示适配器 |
-| 9FC00 | 9FFFF | 1KB      | EBDA扩展BIOS数据区|
-| 7E00  | 9FBFF | 约608KB   | 可用区域 |
-| 7C00  | 7DFF  | 512B     | MBR被BIOS加载到此处, 共512个字节|
-| 500   | 7BFF  | 约30KB   | 可用区域 |
-| 400   | 4FF   | 256B     | BIOS Data Area(BIOS数据区) |
-| 000   | 3FF   | 1KB      | IVT中断向量表|</p>
+<table>
+<thead>
+<tr>
+<th>起始</th>
+<th>结束</th>
+<th>大小</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FFFF0</td>
+<td>FFFFF</td>
+<td>16B</td>
+<td>BIOS的入口地址</td>
+</tr>
+<tr>
+<td>F0000</td>
+<td>FFFEF</td>
+<td>64KB-16B</td>
+<td>顶部的640KB字节</td>
+</tr>
+<tr>
+<td>C8000</td>
+<td>EFFFF</td>
+<td>160KB</td>
+<td>映射硬件适配器的ROM或者内存映射式I/O</td>
+</tr>
+<tr>
+<td>C0000</td>
+<td>C7FFF</td>
+<td>32KB</td>
+<td>显示适配器BIOS</td>
+</tr>
+<tr>
+<td>B8000</td>
+<td>BFFFF</td>
+<td>32KB</td>
+<td>用于文本模式显示适配器</td>
+</tr>
+<tr>
+<td>B0000</td>
+<td>B7FFF</td>
+<td>32KB</td>
+<td>用于黑白显示适配器</td>
+</tr>
+<tr>
+<td>A0000</td>
+<td>AFFFF</td>
+<td>64KB</td>
+<td>用于彩色显示适配器</td>
+</tr>
+<tr>
+<td>9FC00</td>
+<td>9FFFF</td>
+<td>1KB</td>
+<td>EBDA扩展BIOS数据区</td>
+</tr>
+<tr>
+<td>7E00</td>
+<td>9FBFF</td>
+<td>约608KB</td>
+<td>可用区域</td>
+</tr>
+<tr>
+<td>7C00</td>
+<td>7DFF</td>
+<td>512B</td>
+<td>MBR被BIOS加载到此处, 共512个字节</td>
+</tr>
+<tr>
+<td>500</td>
+<td>7BFF</td>
+<td>约30KB</td>
+<td>可用区域</td>
+</tr>
+<tr>
+<td>400</td>
+<td>4FF</td>
+<td>256B</td>
+<td>BIOS Data Area(BIOS数据区)</td>
+</tr>
+<tr>
+<td>000</td>
+<td>3FF</td>
+<td>1KB</td>
+<td>IVT中断向量表</td>
+</tr>
+</tbody>
+</table>
 
-<p></hr></p>
+</hr>
 
 <blockquote>
 <p>这时计算机读取该设备第一个扇区的512个字节, 如果最后两个字节是0x55和0xAA, 则可以启动。</p>
@@ -110,7 +187,6 @@ let's BOOTstrap ! |||||||||||||||||||||||||||!!!!!!!!!!!!!</p>
 <h2>截图留念:)</h2>
 
 <p><img alt="neo1218:)" src="http://7xj431.com1.z0.glb.clouddn.com/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202016-09-26%20%E4%B8%8B%E5%8D%888.22.41.png" /></p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

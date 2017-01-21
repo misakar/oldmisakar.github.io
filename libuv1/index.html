@@ -1,0 +1,198 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>libuv源码阅读笔记1</title>
+    </head>
+    <body>
+        <h1>队列的完全[宏]实现</h1>
+
+<p>看<a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/loop.c">libuv eventloop的实现</a>, 看到下面的代码</p>
+
+<div class="codehilite"><pre><span></span><span class="kt">int</span> <span class="nf">uv_loop_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kt">void</span><span class="o">*</span> <span class="n">saved_data</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">err</span><span class="p">;</span>
+
+  <span class="n">uv__signal_global_once_init</span><span class="p">();</span>
+
+  <span class="n">saved_data</span> <span class="o">=</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>
+  <span class="n">memset</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">loop</span><span class="p">));</span>
+  <span class="n">loop</span><span class="o">-&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">saved_data</span><span class="p">;</span>
+
+  <span class="n">heap_init</span><span class="p">((</span><span class="k">struct</span> <span class="n">heap</span><span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">timer_heap</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">wq</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">active_reqs</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">idle_handles</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">async_handles</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">check_handles</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">prepare_handles</span><span class="p">);</span>
+  <span class="n">QUEUE_INIT</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">handle_queue</span><span class="p">);</span>
+    <span class="p">...</span> <span class="p">...</span> <span class="p">...</span> <span class="p">...</span> <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+
+<p><strong>QUEUE_INIT</strong> 就是给定头指针(比如<code>&amp;loop-&gt;wq, &amp;loop-&gt;active_reqs</code>)初始化callback队列的函数. 然而有趣的是, 这里的<strong>QUEUE_INIT</strong>是一个宏:</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_INIT(q)    \</span>
+<span class="cp">  do {                   \</span>
+<span class="cp">    QUEUE_NEXT(q) = (q); \</span>
+<span class="cp">    QUEUE_PREV(q) = (q); \</span>
+<span class="cp">  }                      \</span>
+<span class="cp">  while (0)</span>
+</pre></div>
+
+<p><code>do...while(0)</code> 用于<strong>避免宏嵌入if...else子句出现错误</strong>, 比如</p>
+
+<div class="codehilite"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+    <span class="n">QUEUE_INIT</span><span class="p">;</span>
+<span class="k">else</span>
+    <span class="n">other</span> <span class="n">code</span><span class="p">;</span>
+</pre></div>
+
+<p>加上<code>do...while(0)</code></p>
+
+<div class="codehilite"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="n">QUEUE_NEXT</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span><span class="p">);</span>
+        <span class="n">QUEUE_PREV</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span><span class="p">);</span>
+    <span class="p">}</span><span class="k">while</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="k">else</span>
+    <span class="n">other</span> <span class="n">code</span><span class="p">;</span>
+</pre></div>
+
+<p>就不会报错了. <br/>
+从这段宏可以看出, 这个队列是使用双向链表创建的; <strong>QUEUE_INIT</strong>是初始化操作:
+初始状态下, 队列头节点的next和prev指针都指向自己. <br/>
+来看看, <strong>QUEUE_NEXT</strong>:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">QUEUE</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+<span class="cp">#define QUEUE_NEXT(q)  (*(QUEUE **) &amp;((*(q))[0]))</span>
+</pre></div>
+
+<p><img alt="" src="http://ww4.sinaimg.cn/bmiddle/005Obw67gw1f2o81hbhowj308c08ct8q.jpg" />
+初看有点懵, 来仔细分析一下:</p>
+
+<p><code>#define QUEUE_NEXT(q)</code>定义了一个宏, 接受一个参数q(<strong>QUEUE* q;</strong>). 宏在预处理时会被替换为</p>
+
+<div class="codehilite"><pre><span></span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">QUEUE</span> <span class="o">**</span><span class="p">)</span><span class="o">&amp;</span><span class="p">((</span><span class="o">*</span><span class="p">(</span><span class="n">q</span><span class="p">))[</span><span class="mi">0</span><span class="p">]))</span>
+</pre></div>
+
+<p>这段代码可以拆分成2个部分</p>
+
+<div class="codehilite"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">((</span><span class="o">*</span><span class="n">q</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+<div class="codehilite"><pre><span></span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">QUEUE</span> <span class="o">**</span><span class="p">)</span><span class="n">result</span><span class="p">)</span>
+</pre></div>
+
+<p>第一部分获取一个指针, 第二部分cast指针类型. <br/>
+<strong>先看第一部分</strong>: q是一个指向QUEUE的指针,而QUEUE是一个存储2个类型为<code>void*</code>元素的数组, 所以q是一个指向长度为2、类型为<code>void*</code>数组的指针, 显然数组中的2个指针元素就是(队列)双向链表中某个节点的prev和next指针; <br/>
+<code>(*q)</code>就是包含2个<code>void*</code>节点的数组, <code>(*q)[0]</code>就是数组中的第一个元素,
+根据<code>QUEUE_NEXT</code>宏的名字可以推断出第一个元素应该是next指针.  <code>&amp;((*q)[0])</code>就是<strong>拿到QUEUE数组第一个元素的地址(指针)</strong>, 类型是<strong><code>void**</code></strong>. <br/>
+<strong>再看第二部分</strong>: 第一部分拿到了一个指向QUEUE[0]类型为<strong><code>void**</code></strong>的指针, 由于每个双向链表的节点是<code>QUEUE *q</code>, 所以next、prev指针的类型就是<code>QUEUE**</code> 所以需要进行类型转换, 这里也可以看出QUEUE元素的类型定义为<strong><code>void*</code></strong>方便以后转换成任意类型.  <code>(QUEUE **)result</code>就是把result转换成指向一个指向QUEUE*的指针😂类型为<code>`QUEUE**</code>. <br/>
+呼... 于是</p>
+
+<div class="codehilite"><pre><span></span><span class="n">QUEUE_NEXT</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span><span class="p">);</span>
+</pre></div>
+
+<p>就是把q节点的next指针<code>QUEUE** q</code>赋值为q(<code>*(QUEUE**)next = q</code>).</p>
+
+<h2>这样写好吗?</h2>
+
+<p>再看看利用了这些宏的其他操作: <br/></p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))</span>
+<span class="cp">#define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))</span>
+
+<span class="cp">#define QUEUE_HEAD(q)                                          \</span>
+<span class="cp">  (QUEUE_NEXT(q))</span>
+
+<span class="cp">#define QUEUE_INIT(q)                                          \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_NEXT(q) = (q);                                       \</span>
+<span class="cp">    QUEUE_PREV(q) = (q);                                       \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+
+<span class="cp">#define QUEUE_ADD(h, n)                                        \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                        \</span>
+<span class="cp">    QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                        \</span>
+<span class="cp">    QUEUE_PREV(h) = QUEUE_PREV(n);                             \</span>
+<span class="cp">    QUEUE_PREV_NEXT(h) = (h);                                  \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+
+<span class="cp">#define QUEUE_SPLIT(h, q, n)                                   \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_PREV(n) = QUEUE_PREV(h);                             \</span>
+<span class="cp">    QUEUE_PREV_NEXT(n) = (n);                                  \</span>
+<span class="cp">    QUEUE_NEXT(n) = (q);                                       \</span>
+<span class="cp">    QUEUE_PREV(h) = QUEUE_PREV(q);                             \</span>
+<span class="cp">    QUEUE_PREV_NEXT(h) = (h);                                  \</span>
+<span class="cp">    QUEUE_PREV(q) = (n);                                       \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+
+<span class="cp">#define QUEUE_INSERT_HEAD(h, q)                                \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_NEXT(q) = QUEUE_NEXT(h);                             \</span>
+<span class="cp">    QUEUE_PREV(q) = (h);                                       \</span>
+<span class="cp">    QUEUE_NEXT_PREV(q) = (q);                                  \</span>
+<span class="cp">    QUEUE_NEXT(h) = (q);                                       \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+
+<span class="cp">#define QUEUE_INSERT_TAIL(h, q)                                \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_NEXT(q) = (h);                                       \</span>
+<span class="cp">    QUEUE_PREV(q) = QUEUE_PREV(h);                             \</span>
+<span class="cp">    QUEUE_PREV_NEXT(q) = (q);                                  \</span>
+<span class="cp">    QUEUE_PREV(h) = (q);                                       \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+
+<span class="cp">#define QUEUE_REMOVE(q)                                        \</span>
+<span class="cp">  do {                                                         \</span>
+<span class="cp">    QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);                        \</span>
+<span class="cp">    QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);                        \</span>
+<span class="cp">  }                                                            \</span>
+<span class="cp">  while (0)</span>
+</pre></div>
+
+<p>是不是就像写Python一样直观、简单😂</p>
+
+<h2>Q&amp;A, 其实是自言自语</h2>
+
+<p><strong>Q:<code>(*(QUEUE **)result)</code>为什么不能写成<code>((QUEUE *)result)</code>?</strong> <br/>
+<strong>A:</strong> 因为result是<code>void**</code>类型, 虽然<code>QUEUE
+*</code>会把result转换成符合要求的指针, 但这时候指针就不是result而是<code>*result</code>,
+所以不能这样写.</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>muxi-backend-workflow</title>
     </head>
     <body>
@@ -15,8 +18,7 @@
 <li>python</li>
 <li>nodejs</li>
 </ul>
-
-<p></li>
+</li>
 <li><strong>测试</strong><ul>
 <li>siege压力测试</li>
 <li>Travis CI持续集成</li>
@@ -56,7 +58,7 @@
 <li>sentry</li>
 </ul>
 </li>
-</ul></p>
+</ul>
 
 <h2>木犀后台组工作流程</h2>
 
@@ -100,8 +102,7 @@
 <li>docker-compose up -d: 运行测试后(可以将测试命令添加入docker-compose.yml文件中)在后台运行应用</li>
 <li>docker-compose logs: 查看日志是否启动成功</li>
 </ol>
-
-<p></li>
+</li>
 </ul>
 </li>
 <li>以后只要本地提交至github, 就会自动在测试服务器上 build环境、运行测试、部署应用!</li>
@@ -125,7 +126,7 @@
 <li>配置sentry</li>
 </ul>
 </li>
-</ol></p>
+</ol>
 
 <p>最终达成的效果就是可以对应用有很好的把握, 快速的定位错误, 以及自动部署.</p>
 
@@ -161,7 +162,6 @@ C++也好, python也好, nodejs也好, 处理响应的速度再快, json转换�
 <li>asyncio</li>
 <li>aiohttp</li>
 </ul>
-
         <div id="disqus_thread"></div>
         <script>
         /**

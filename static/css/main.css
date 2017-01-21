@@ -6,6 +6,7 @@ body {
     width: 50%;
     line-height: 150%;
     border: 1px solid LightGrey;
+    word-wrap:break-word;
 }
 
 H1 {
@@ -58,7 +59,7 @@ blockquote {
 }
 
 
-pre {
+/*pre {
     font-family: Inconsolata, Consolas, "DEJA VU SANS MONO", "DROID SANS MONO", Proggy, monospace;
     font-size: 75%;
     border: solid 1px lightgrey;
@@ -67,7 +68,7 @@ pre {
     line-height: 130%;
     margin-left: 10px;
     width: 95%;
-}
+}*/
 
 
 code {
@@ -92,13 +93,13 @@ a:hover {
 
 img {
     display: block;
-    box-shadow: 0 0 10px #555;
+    /*box-shadow: 0 0 10px #555;*/
     border-radius: 6px;
     margin-left: auto;
     margin-right: auto;
     margin-top: 10px;
     margin-bottom: 10px;
-    -webkit-box-shadow: 0 0 10px #555;
+    /*-webkit-box-shadow: 0 0 10px #555;*/
     max-width: 100%;
 }
 

@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>关于Restful API的个人理解</title>
     </head>
     <body>
@@ -159,32 +162,25 @@ SSL/TLS协议的基本过程如下:</p>
 <li>支持的加密算法</li>
 <li>支持的压缩算法</li>
 </ol>
-
-<p></li>
-<li></p>
-
+</li>
+<li>
 <p>服务器端返回信息</p>
-
 <ol>
 <li>确认SSL/TLS协议版本</li>
 <li>一个服务器生成的随机数, 用于生成"对话密钥"</li>
 <li>确认使用的加密算法</li>
 <li>服务器证书</li>
 </ol>
-
-<p></li>
-<li></p>
-
+</li>
+<li>
 <p>客户端收到回应后会验证服务器证书。如果证书没有问题, 客户端就会从证书中提取公钥.然后向服务器发送</p>
-
 <ol>
 <li>一个随机数, 用于服务器公钥加密, 防止被窃听</li>
 <li>编码改变通知, 表示随后的信息都将用双方协定好的加密方法和密钥发送</li>
 <li>握手结束通知</li>
 </ol>
-
-<p></li>
-</ol></p>
+</li>
+</ol>
 
 <p>这里客户端生成的两个随机数和服务器生成的随机数一起用于session key的生成.</p>
 
@@ -340,7 +336,6 @@ API的设计也应该时可以索引的, 有层次的, 比如(以user为例):</p
 
 <p><hr/>
 <img alt="填坑" src="http://tva1.sinaimg.cn/crop.0.0.200.200.180/006i0pdHjw8ey3tztfv7cg305k05kmx4.gif" /></p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

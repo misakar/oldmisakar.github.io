@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>呃~硬盘</title>
     </head>
     <body>
@@ -75,20 +78,90 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 
 <h3>端口寄存器</h3>
 
-<p>| IO端口|  | 端口用途 | |
-| ------ | --- | -------- | --- |
-| Primary| Secondary | 读操作 | 写操作 |
-| Command Block register:|||向硬盘驱动器中写入命令字或者获取硬盘状态|
-| 0x1F0 | 0x170 | Data | Data(读取或写入数据) |
-| 0x1F1 | 0x171 | Error(读取失败时记录失败信息) | Features(存放命令的额外参数) | 
-| 0x1F2 | 0x172 | Sector count | Sector count(指定待读取或待写入的扇区数) |
-| 0x1F3 | 0x173 | LBA low | LBA low(lba28 0~7位) |
-| 0x1F4 | 0x174 | LBA mid | LBA mid(lba28 8~15位) |
-| 0x1F5 | 0x175 | LBA high | LBA high(lba28 16~23位) |
-| 0x1F6 | 0x176 | device |  device(device寄存器是一个杂项:宽度8位) |
-| 0x1F7 | 0x177 | status(硬盘状态寄存器) | command(命令写入该寄存器, 硬盘就开始工作了) |
-| Control Block register ||| 控制硬盘工作状态| 
-| 0x3F6 | 0x376 | Alternate status | Device Control |</p>
+<table>
+<thead>
+<tr>
+<th>IO端口</th>
+<th></th>
+<th>端口用途</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Primary</td>
+<td>Secondary</td>
+<td>读操作</td>
+<td>写操作</td>
+</tr>
+<tr>
+<td>Command Block register:</td>
+<td>向硬盘驱动器中写入命令字或者获取硬盘状态</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>0x1F0</td>
+<td>0x170</td>
+<td>Data</td>
+<td>Data(读取或写入数据)</td>
+</tr>
+<tr>
+<td>0x1F1</td>
+<td>0x171</td>
+<td>Error(读取失败时记录失败信息)</td>
+<td>Features(存放命令的额外参数)</td>
+</tr>
+<tr>
+<td>0x1F2</td>
+<td>0x172</td>
+<td>Sector count</td>
+<td>Sector count(指定待读取或待写入的扇区数)</td>
+</tr>
+<tr>
+<td>0x1F3</td>
+<td>0x173</td>
+<td>LBA low</td>
+<td>LBA low(lba28 0~7位)</td>
+</tr>
+<tr>
+<td>0x1F4</td>
+<td>0x174</td>
+<td>LBA mid</td>
+<td>LBA mid(lba28 8~15位)</td>
+</tr>
+<tr>
+<td>0x1F5</td>
+<td>0x175</td>
+<td>LBA high</td>
+<td>LBA high(lba28 16~23位)</td>
+</tr>
+<tr>
+<td>0x1F6</td>
+<td>0x176</td>
+<td>device</td>
+<td>device(device寄存器是一个杂项:宽度8位)</td>
+</tr>
+<tr>
+<td>0x1F7</td>
+<td>0x177</td>
+<td>status(硬盘状态寄存器)</td>
+<td>command(命令写入该寄存器, 硬盘就开始工作了)</td>
+</tr>
+<tr>
+<td>Control Block register</td>
+<td>控制硬盘工作状态</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>0x3F6</td>
+<td>0x376</td>
+<td>Alternate status</td>
+<td>Device Control</td>
+</tr>
+</tbody>
+</table>
 
 <p>从这几组端口(ps端口就是寄存器)的设定可以看出: <strong>寄存器实在太tm宝贵了!</strong></p>
 
@@ -100,8 +173,7 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 <li>0代表主盘, 1代表从盘</li>
 <li>也就是说无论是主板还是从盘,使用的端口都是一样的,只是device寄存器设置的不一样</li>
 </ul>
-
-<p></li>
+</li>
 <li>第6位用来设置是否启用LBA方式<ul>
 <li>0代表CHS方式, 1代表LBA方式</li>
 </ul>
@@ -114,7 +186,7 @@ OK, 有了规范, 接下来就是实现了, 实现就需要具体化, 用到相�
 <li>读的时候硬盘控制器会认为是想获取硬盘的状态</li>
 </ul>
 </li>
-</ul></p>
+</ul>
 
 <p><strong>device和status寄存器的状态</strong> <br/></p>
 
@@ -157,7 +229,6 @@ status寄存器  (位)   0  1  2  3  4  5  6      7
 耐性一点, 依次看不完看2次, 弄明白的感觉实在是太爽啦!</p>
 
 <p><img alt="赢了呢!" src="https://cloud.githubusercontent.com/assets/10671733/20243302/130441f6-a98d-11e6-83d5-e83fc7bf96d1.png" /></p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

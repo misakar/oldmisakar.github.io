@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>flask源码阅读笔记~正则自动化</title>
     </head>
     <body>
@@ -44,7 +47,6 @@ ast.literal_eval的功能和eval类似,
 不过会先判断被计算的内容是不是合法的python类型, 所以<code>str(ast.literal_eval(version))</code>
 的作用就是先检查version的类型是否合法, 然后转为python str字符串的形式.
 可以看出flask不打算迁移python3:)</p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

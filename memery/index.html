@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>Java对象内存空间估算</title>
     </head>
     <body>
@@ -87,7 +90,6 @@ double             8
 <h2>总结</h2>
 
 <p>对所有对象内存占用的累计计算只能是估算, 因为一个程序在运行时是很复杂的, 比如多个字符串共享字符数组、对对象游离进行自动垃圾回收... 不过我们计算内存占用不是为了获得精确值, 而是为了比对, 和对时间的估算一样. 通过对空间和时间的估算, 我们就可以大致的对比出不同程序的好坏, 这也是算法分析的用处所在.</p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

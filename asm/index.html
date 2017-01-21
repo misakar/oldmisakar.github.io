@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>操作系统开发总结(持久更新)</title>
     </head>
     <body>
@@ -19,8 +22,7 @@
 <li>0x06子功能: 上卷窗口</li>
 <li>0x13子功能: 显示字符串(vga文本模式)</li>
 </ul>
-
-<p></li>
+</li>
 <li>bios 0x15中断<ul>
 <li>0xe820子功能: 获取系统内存布局</li>
 </ul>
@@ -42,7 +44,8 @@
 </ul>
 </li>
 </ul>
-<hr/></p>
+
+<hr/>
 
 <h2>字符搬运三剑客! movs[bwd], rep, cl[st]d</h2>
 
@@ -97,9 +100,20 @@ mov ss, ax
 
 <h3>bios 0x10中断</h3>
 
-<p>| 功能号 | 作用 |
-| ------ | ---  |
-| 0x06   | 上卷窗口|</p>
+<table>
+<thead>
+<tr>
+<th>功能号</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x06</td>
+<td>上卷窗口</td>
+</tr>
+</tbody>
+</table>
 
 <p>目前uiharu是通过bochs模拟器启动的, 所以进入工作状态前需要把bochs的启动信息清空, 这个bios中断就可以上卷窗口.</p>
 
@@ -111,9 +125,20 @@ mov dx, 0x184f  ; dx 右下角坐标: (0x18, 0x4f) -&gt; (24, 79)
 int 0x10        ; 调用0x10中断, 清屏(0, 0)~(24, 79)的整屏窗口
 </pre></div>
 
-<p>| 功能号 | 作用 |
-| ------ | ---  |
-| 0x13   | 打印字符串 |</p>
+<table>
+<thead>
+<tr>
+<th>功能号</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x13</td>
+<td>打印字符串</td>
+</tr>
+</tbody>
+</table>
 
 <p>一开始还没接触显卡的时候, 是使用bios打印(显示)字符串的</p>
 
@@ -131,9 +156,20 @@ int 0x10        ; 调用0x10中断, 以黑底绿字的形式在第一页开头�
 
 <h3>bios 0x15中断</h3>
 
-<p>| 功能号 | 作用 |
-| ------ | ------ |
-| 0xe820 | 获取物理内存布局 |</p>
+<table>
+<thead>
+<tr>
+<th>功能号</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0xe820</td>
+<td>获取物理内存布局</td>
+</tr>
+</tbody>
+</table>
 
 <p>mbr加载loader以后, 在分页之前, 需要知道有多少蛋糕🍰 可以分, 也就是bochs模拟器给了多少实际内存. 我在bochs配置中声明分配32MB的内存,
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21089204/0dcdf394-c071-11e6-88df-5ca310d34d67.png" />
@@ -141,13 +177,42 @@ int 0x10        ; 调用0x10中断, 以黑底绿字的形式在第一页开头�
 
 <p>BIOS中断0x15的子功能0xe820可以获取系统的内存布局, 系统内存各部分的内存属性不同, BIOS按照类型属性来划分系统内存并查询返回. 为了更好的描述某属性的系统内存, 使用地址范围描述符(Address Range Descriptor Structure, ARDS)描述. ARDS结构如表: <br/></p>
 
-<p>| 字节偏移量 | 属性名称 | 描述 |
-| --- | --- | --- |
-| 0 | BaseAddrLow | 基地址的低32位 |
-| 4 | BaseAddrHigh | 基地址的高32位 |
-| 8 | LengthLow | 内存长度的低32位 |
-| 12 | LengthHigh | 内存长度的高32位 |
-| 16 | Type | 本段内存的类型 |</p>
+<table>
+<thead>
+<tr>
+<th>字节偏移量</th>
+<th>属性名称</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>BaseAddrLow</td>
+<td>基地址的低32位</td>
+</tr>
+<tr>
+<td>4</td>
+<td>BaseAddrHigh</td>
+<td>基地址的高32位</td>
+</tr>
+<tr>
+<td>8</td>
+<td>LengthLow</td>
+<td>内存长度的低32位</td>
+</tr>
+<tr>
+<td>12</td>
+<td>LengthHigh</td>
+<td>内存长度的高32位</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Type</td>
+<td>本段内存的类型</td>
+</tr>
+</tbody>
+</table>
 
 <p>内存有不同的属性, 我们希望检测出我们可以使用的最大内存, 但有些内存不是给我们用的. 这里系统内存是一个总的概念, 是指32位地址总线可以寻址的所有存储空间.<br/></p>
 
@@ -240,13 +305,12 @@ ards_nr dw 0            ; 纪录缓冲区中ards结构体中的数目dw(2个字�
 <li>ICW: Initialization Command Words: 初始化命令寄存器组<ul>
 <li>ICW1, ICW2, ICW3, ICW4</li>
 </ul>
-
-<p></li>
+</li>
 <li>OCW: Operation Command Words: 操作命令寄存器组<ul>
 <li>OCW1, OCW2, OCW3, OCW4</li>
 </ul>
 </li>
-</ul></p>
+</ul>
 
 <p>通过这2组寄存器里的寄存器, 我们可以设置<strong>8259A是否级联</strong>, <strong>起始中断向量号</strong>, <strong>中断结束模式</strong>, <strong>屏蔽哪些外设中断</strong>, <strong>设定中断优先级</strong>. 这里直接上代码和注释:</p>
 
@@ -617,7 +681,6 @@ void idt_init(void) {
 <img alt="" src="https://cloud.githubusercontent.com/assets/10671733/21104627/3e4e0b16-c0c2-11e6-8d07-17794a68865d.png" /></p>
 
 <hr/>
-
         <div id="disqus_thread"></div>
         <script>
         /**

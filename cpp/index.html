@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>我不知道的Cpp</title>
     </head>
     <body>
@@ -281,7 +284,6 @@ private:
 </pre></div>
 
 <p>注意, 因为cstr是一个指向str.c_str()内存区域的指针, str改变了, cstr也会改变, 显然我们不希望这样, 一个比较好的做法是把cstr的类容复制出来! <br/></p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

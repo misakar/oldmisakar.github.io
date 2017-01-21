@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>背包、队列、栈:使用范型和迭代</title>
     </head>
     <body>
@@ -180,10 +183,9 @@ Flask的核心就是一个WSGI调度栈: <code>_request_ctx_stack</code> <br/>
 </ul>
 </li>
 </ol>
-
-<p></li>
+</li>
 <li>操作数栈中最后一个栈顶操作数就是该算术表达式的运算结果</li>
-</ol></p>
+</ol>
 
 <p>代码实现:</p>
 
@@ -413,7 +415,6 @@ public Iterator&lt;Item&gt; iterator()
 </pre></div>
 
 <p>这样我们就实现了一个可以动态改变数组大小且可迭代的栈数据结构:)</p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

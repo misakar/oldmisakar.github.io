@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>用汇编读写硬盘</title>
     </head>
     <body>
@@ -128,7 +131,6 @@ mov [bx], ax
 </pre></div>
 
 <p>这3步实现从硬盘中读出数据并加载到内存. uiharu的loader、kernel.bin、kernel image都是这样读写的!</p>
-
         <div id="disqus_thread"></div>
         <script>
         /**

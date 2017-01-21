@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>关于Python yield的一些常识</title>
     </head>
     <body>
@@ -113,9 +116,10 @@ Out[38]: 8
 <li>利用集合对ip<strong>生成器</strong>进行去重, 得到所有ip集合</li>
 </ul>
 
-<p><code>nginx_log = open('big-nginx-access.log')
+<div class="codehilite"><pre><span></span>nginx_log = open(&#39;big-nginx-access.log&#39;)
 ip_columns = (line.split()[0] for line in nginx_log)
-ip_set = set(ip_columns)</code></p>
+ip_set = set(ip_columns)
+</pre></div>
 
 <p>执行的流程图:</p>
 
@@ -217,7 +221,6 @@ contextmanager装饰器大致实现部分如下: <br/>
 <h3>生成器用于异步调度</h3>
 
 <h3>协程: 单线程并发</h3>
-
         <div id="disqus_thread"></div>
         <script>
         /**

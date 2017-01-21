@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>Flask配置celery定时任务</title>
     </head>
     <body>
@@ -16,23 +19,20 @@
 
 <h2>编写make_celery工厂函数</h2>
 
-<p>```python
-    from celery import Celery</p>
+<div class="codehilite"><pre><span></span>    <span class="kn">from</span> <span class="nn">celery</span> <span class="kn">import</span> <span class="n">Celery</span>
 
-<div class="codehilite"><pre><span></span>def make_celery(app):
-    celery = Celery(app.import_name, broker=app.config[&#39;CELERY_BROKER_URL&#39;])
-    celery.conf.update(app.config)
-    TaskBase = celery.Task
-    class ContextTask(TaskBase):
-        abstruct = True
-        def __call__(self, *args, **keywords):
-            with app.app_context():
-                return TaskBase.__call__(self, *args, **keywords)
-    celery.Task = ContextTask
-    return celery
+    <span class="k">def</span> <span class="nf">make_celery</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+        <span class="n">celery</span> <span class="o">=</span> <span class="n">Celery</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">import_name</span><span class="p">,</span> <span class="n">broker</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;CELERY_BROKER_URL&#39;</span><span class="p">])</span>
+        <span class="n">celery</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">TaskBase</span> <span class="o">=</span> <span class="n">celery</span><span class="o">.</span><span class="n">Task</span>
+        <span class="k">class</span> <span class="nc">ContextTask</span><span class="p">(</span><span class="n">TaskBase</span><span class="p">):</span>
+            <span class="n">abstruct</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">keywords</span><span class="p">):</span>
+                <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+                    <span class="k">return</span> <span class="n">TaskBase</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">keywords</span><span class="p">)</span>
+        <span class="n">celery</span><span class="o">.</span><span class="n">Task</span> <span class="o">=</span> <span class="n">ContextTask</span>
+        <span class="k">return</span> <span class="n">celery</span>
 </pre></div>
-
-<p>```</p>
 
 <p>这个工厂函数做了一点手脚(ContextTask), 这样就可以在celery task中使用flask对象(app context)</p>
 
@@ -40,15 +40,12 @@
 
 <p>使用@celery.task装饰器编写celery任务</p>
 
-<p>```python
-    celery = make_celery(app)</p>
+<div class="codehilite"><pre><span></span>    <span class="n">celery</span> <span class="o">=</span> <span class="n">make_celery</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 
-<div class="codehilite"><pre><span></span>@celery.task(name=printy)
-def printy():
-    print &quot;hahahahaha&quot;
+    <span class="nd">@celery.task</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">printy</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">printy</span><span class="p">():</span>
+        <span class="k">print</span> <span class="s2">&quot;hahahahaha&quot;</span>
 </pre></div>
-
-<p>```</p>
 
 <h2>定时celery任务</h2>
 
@@ -88,7 +85,6 @@ def printy():
 <li><a href="http://blog.miguelgrinberg.com/post/using-celery-with-flask">using-celery-with-flask</a></li>
 <li><a href="http://www.it1me.com/it-answers?id=29670961&amp;s=Kiev&amp;ttl=Flask%2C+blueprints+uses+celery+task+and+got+cycle+import">Flask, blueprints uses celery task and got cycle import</a></li>
 </ul>
-
         <div id="disqus_thread"></div>
         <script>
         /**

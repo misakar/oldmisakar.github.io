@@ -3,6 +3,9 @@
 
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
         <title>指针(努力说清楚)</title>
     </head>
     <body>
@@ -31,9 +34,11 @@
 <li>按位与</li>
 </ol>
 
-<p>我们这里说第一个用法: <strong>在C语言中</strong>: &amp;表示取地址, 注意C++中"&amp;"表示引用, 引用的概念是另一块了, 这篇先跳过. <br/>
-<code>int data = 10;
-// &amp;data 就可以拿到data变量的内存地址</code></p>
+<p>我们这里说第一个用法: <strong>在C语言中</strong>: &amp;表示取地址, 注意C++中"&amp;"表示引用, 引用的概念是另一块了, 这篇先跳过. <br/></p>
+
+<div class="codehilite"><pre><span></span>int data = 10;
+// &amp;data 就可以拿到data变量的内存地址
+</pre></div>
 
 <h2>5. 初始化指针</h2>
 
@@ -119,7 +124,6 @@ point_function = &amp;function
 </ol>
 
 <p>这样, 再怎么搭配, 也不怕了:) 希望如此. <br/></p>
-
         <div id="disqus_thread"></div>
         <script>
         /**
