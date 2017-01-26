@@ -1,0 +1,376 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>Python内存机制</title>
+    </head>
+    <body>
+        <h1>Python内存机制</h1>
+
+<p>内存是最重要的计算机资源, 程序要想被CPU执行, 必须先被加载到内存中. 然而内存资源是有限的, 如何合理的分配内存资源、缓存一些大内存占用的值、及时清理不被使用的对象... 成为各种语言必须要解决的问题. 这篇文章说下Python的内存机制.</p>
+
+<h2>对象的内存占用</h2>
+
+<h3>可变对象与不可变对象</h3>
+
+<p>Python中一切皆为对象. <br/>
+Python的对象分为可变(mutable)和不可变对象(immutable)两大类, <strong>元组</strong>、<strong>数值</strong>、<strong>字符串</strong>属于<strong>不可变对象</strong>; <strong>字典</strong>和<strong>列表</strong>属于<strong>可变</strong>对象. 举个例子:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="c1"># id(obj)获取obj内存地址的10进制表示</span>
+<span class="bp">False</span>
+</pre></div>
+
+<p>因为数值型对象是不可变的, 所以a=2会新开辟一块内存存储2, 将a变量绑定到新的内存. <br/></p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="bp">True</span>
+</pre></div>
+
+<p>因为列表是可变对象, 所以修改a引用的列表不会创建新的列表对象. <br/></p>
+
+<h3>对象的缓存机制</h3>
+
+<p>python中, <strong>小整数([-5, 120])</strong>和<strong>短字符串</strong>对象会被缓存, 方便下次快速调用, 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">True</span>
+</pre></div>
+
+<p>这里的1就被缓存起来了. <br/>
+字符串的缓存有点小复杂:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;短字符串&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="s2">&quot;短字符串&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;长字符串&quot;</span><span class="o">*</span><span class="mi">1000</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="s2">&quot;长字符串&quot;</span><span class="o">*</span><span class="mi">1000</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">False</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;短 字符串&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="s2">&quot;短 字符串&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">False</span>
+</pre></div>
+
+<p>python会缓存短字符串, 但是如果短字符串中有空格则不会被缓存orz.个人理解, 使用比较频繁的字符串就是变量名了(字母、数字、下划线), 所以进行缓存. 毕竟缓存也是需要内存开销的, 所以缓存大整数、长字符串就得不偿失了.</p>
+
+<h3>按引用传递与按值传递</h3>
+
+<p>Python的函数传参、对象赋值、对象拷贝默认都是按引用传递. 关于按引用和按值传递, 举一个经典的C++交换2整数的例子: <br/>
+<strong>按值传递</strong> <br/></p>
+
+<div class="codehilite"><pre><span></span><span class="c1">// C++默认参数传递是按值传递</span>
+<span class="kt">void</span> <span class="nf">exchange</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">tmp</span><span class="p">;</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">b</span><span class="p">;</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">exchange</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+<span class="c1">// 因为a, b形参匹配的实际上是参数的值, 所以只改变了exchange函数栈中的局部变量,</span>
+<span class="c1">// 并没有改变实参的值.</span>
+</pre></div>
+
+<p><strong>按引用传递</strong></p>
+
+<div class="codehilite"><pre><span></span><span class="kt">void</span> <span class="nf">exchange</span><span class="p">(</span><span class="kt">int</span> <span class="o">&amp;</span><span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="o">&amp;</span><span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">tmp</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">b</span><span class="p">;</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">exchange</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+<span class="c1">// 这时候传递进来的是a, b的引用也就是a, b的地址,</span>
+<span class="c1">// 所以直接更改了内存地址指向的a、b实参值.</span>
+</pre></div>
+
+<p>按引用传递可能会产生一些不容易发现的bug, 之前有一个同学写了这一段代码:</p>
+
+<div class="codehilite"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">a</span>
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">a</span> <span class="p">:</span>
+   <span class="k">while</span> <span class="n">c</span> <span class="o">!=</span> <span class="mi">1</span> <span class="p">:</span>
+       <span class="k">if</span> <span class="n">c</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
+           <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="mi">2</span>
+           <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">a</span> <span class="p">:</span>
+               <span class="n">res</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</pre></div>
+
+<p>debug了半天, 结果每次res.remove都会改变a😂, 因为这里res和a指向的是同一块内存!</p>
+
+<h2>Python垃圾回收机制</h2>
+
+<h3>引用计数</h3>
+
+<p>内存资源是宝贵的, 有去就要有回. Python采用基于<strong>引用计数</strong>的垃圾回收机制. Python中每个对象都是指向某块内存的引用, 一块内存可以被多个对象引用. <br/>
+Python中可以使用<code>sys.getrefcount</code>获取某个对象的引用计数, 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sys</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">function</span><span class="p">():</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="c1"># 在函数内部获取引用计数, 避免全局作用域干扰</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>    
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="k">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getrefcount</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="mi">3</span> <span class="c1"># getrefcount也会引用a</span>
+</pre></div>
+
+<p>这里的内存布局如图:
+<img alt="screen shot 2017-01-26 at 02 27 51" src="https://cloud.githubusercontent.com/assets/10671733/22303628/1b0d5916-e36f-11e6-95b6-9036c873955f.png" />
+再比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sys</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">function</span><span class="p">():</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>    
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">b</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="k">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getrefcount</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="mi">2</span>
+</pre></div>
+
+<p>这里b指向了另一块内存, a的引用计数就会减少:
+<img alt="screen shot 2017-01-26 at 02 27 22" src="https://cloud.githubusercontent.com/assets/10671733/22303627/1ab74a44-e36f-11e6-9d1d-fb980c934003.png" /></p>
+
+<p>当某个对象的<strong>引用计数为0时</strong>, 这个对象就没用了, Python解释器会在适当的时候启动垃圾回收机制, 回收这些对象. <br/></p>
+
+<h3>分代回收</h3>
+
+<p>垃圾回收也是有代价的, Python进行垃圾回收的时候不能做别的事情, 频繁的垃圾回收会严重影响程序的性能. 所以Python只会在<strong>适当的时候</strong>启动垃圾回收机制. 适当的时候就是<strong>(分配对象数)-(取消分配对象数)大于某个阈值的时候</strong>, 这个阈值使用如下方法获取</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">gc</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">gc</span><span class="o">.</span><span class="n">get_threshold</span><span class="p">()</span>
+<span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="c1"># 700就是垃圾回收的阈值</span>
+</pre></div>
+
+<p>为了提高垃圾回收的效率, Python使用了<strong>分代回收</strong>的垃圾回收策略, 将Python对象分为0, 1, 2三代, 所有新创建的对象默认是第0代, 每一次回收扫描存活下来的对象增加一代. 这样代越高的对象使用越频繁, Python就会减少对该代的垃圾回收扫描频率. </p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">gc</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">gc</span><span class="o">.</span><span class="n">get_threshold</span><span class="p">()</span>
+<span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+<p>后面的(10, 10)就是不同代的扫描频率, 表示<strong>每扫描10次0代对象, 配合进行一次1代扫描; 每扫描10次1代对象, 进行一次2代对象扫描.</strong> <br/>
+扫描的频率可以自行更改:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">gc</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">gc</span><span class="o">.</span><span class="n">set_threshold</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</pre></div>
+
+<h3>引用环问题</h3>
+
+<p>a引用b、b引用a, 即时没有别的对象引用a、b, a、b的引用计数也不会为零, 这就构成了<strong>孤立的引用环</strong>. 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">function</span><span class="p">():</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="kn">import</span> <span class="nn">sys</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="n">b</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="n">b</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="k">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getrefcount</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">...</span> <span class="k">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getrefcount</span><span class="p">(</span><span class="n">b</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="mi">3</span>
+<span class="mi">3</span>
+</pre></div>
+
+<p>可以看到, 即使<code>del a; del b</code>, a, b对象的引用计数为1, 不会被垃圾回收. 
+<img alt="screen shot 2017-01-26 at 14 03 04" src="https://cloud.githubusercontent.com/assets/10671733/22321478/35c44c22-e3d0-11e6-8cba-84a17429377a.png" />
+引用环的存在对Python的垃圾回收造成了很大影响. <br/>
+引用环其实和死锁很像😂, 要想消除引用环就需要主动出击! <strong>Python会遍历所有对象i, 将对象i引用的对象j的引用计数-1</strong>, <strong>最终保留引用计数不为0的对象和该对象引用的其他对象</strong>, 如此, 对于相互引用的引用环, 就会因为遍历时引用计数均减为0而被回收!
+<img alt="screen shot 2017-01-26 at 14 23 41" src="https://cloud.githubusercontent.com/assets/10671733/22321879/1ae0821a-e3d3-11e6-882c-693a06ff5a64.png" /></p>
+
+<h2>Python赋值与拷贝</h2>
+
+<p>Python按引用传递对象的特性使得赋值和拷贝操作隐藏着一些陷阱. <br/>
+<strong>赋值实际上就是传引用</strong>,<br/>
+拷贝需要分情况讨论, <strong>对于可变对象的拷贝需要区别深拷贝和浅拷贝</strong>.</p>
+
+<h3>赋值</h3>
+
+<p>比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="bp">True</span>
+</pre></div>
+
+<p>内存布局如图:
+<img alt="screen shot 2017-01-26 at 14 30 30" src="https://cloud.githubusercontent.com/assets/10671733/22322014/07638650-e3d4-11e6-898d-6173842debe7.png" />
+举个复杂一点的例子</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">neo1218</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Python&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;MUXI&quot;</span><span class="p">,</span> <span class="s2">&quot;CS&quot;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">neo1219</span> <span class="o">=</span> <span class="n">neo1218</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">neo1218</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Node&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">neo1218</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;JS&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">neo1219</span>
+<span class="p">[</span><span class="s2">&quot;Node&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;MUXI&quot;</span><span class="p">,</span> <span class="s2">&quot;JS&quot;</span><span class="p">]]</span>
+</pre></div>
+
+<p>整个内存的变化过程如图:
+<img alt="screen shot 2017-01-26 at 14 55 25" src="https://cloud.githubusercontent.com/assets/10671733/22322520/850ad434-e3d7-11e6-87a0-94c547b167b9.png" />
+注意, 修改不可变对象会创建一个新的对象, 旧的对象会在适当的时候被垃圾回收!</p>
+
+<h3>拷贝</h3>
+
+<p>使用<strong>copy</strong>模块可以进行拷贝操作, 默认的<strong>copy.copy方法是浅拷贝</strong></p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">copy</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="bp">True</span>
+</pre></div>
+
+<p><strong>对不可变对象进行拷贝依然是类似赋值传引用</strong>. <br/>
+对可变对象进行拷贝则不同了,</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">copy</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;neo1218&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Python&quot;</span><span class="p">,</span> <span class="s2">&quot;MUXI&quot;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">False</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="bp">False</span>
+</pre></div>
+
+<p>对<strong>不可变对象</strong>进行浅拷贝, 会使用一块<strong>新的内存区域</strong>, 不过浅拷贝<strong>拷贝对象引用的其他对象, 依然是传引用</strong>. <br/>
+内存布局图有助于理解浅拷贝:
+<img alt="screen shot 2017-01-26 at 15 15 59" src="https://cloud.githubusercontent.com/assets/10671733/22322965/69d4f43a-e3da-11e6-81ac-61f12eeb8916.png" />
+所以:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="c1"># 接上</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zxc0238&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span>
+<span class="p">[</span><span class="s1">&#39;zxc0328&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+</pre></div>
+
+<p><img alt="screen shot 2017-01-26 at 15 20 03" src="https://cloud.githubusercontent.com/assets/10671733/22323044/f6e20110-e3da-11e6-9c38-c1a0cd39437b.png" /></p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="c1"># 接上</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Node&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span>
+<span class="p">[</span><span class="s1">&#39;zxc0328&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Node&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Node&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+</pre></div>
+
+<p><img alt="screen shot 2017-01-26 at 15 21 41" src="https://cloud.githubusercontent.com/assets/10671733/22323080/3409490e-e3db-11e6-906a-c87d4be4c902.png" />
+浅拷贝常常导致一些莫名其妙的行为, 因为拷贝后的对象和拷贝前的对象会因为部分引用而相互干扰.<br/> 
+使用深拷贝则会完全撇清拷贝对象之间的关系!</p>
+
+<h4>深拷贝</h4>
+
+<p>使用<strong>copy.deepcopy</strong>函数可以深拷贝一个对象, 还是上面那个例子</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">copy</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;neo1218&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Python&quot;</span><span class="p">,</span> <span class="s2">&quot;MUXI&quot;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span>
+<span class="bp">False</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">id</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="bp">False</span>
+</pre></div>
+
+<p>与浅拷贝不同, <strong>深拷贝拷贝对象的引用对象不再传引用, 而是使用一块新的内存</strong>,
+内存布局如图:
+<img alt="screen shot 2017-01-26 at 15 36 20" src="https://cloud.githubusercontent.com/assets/10671733/22323343/498a433a-e3dd-11e6-8e70-c349f1f741e1.png" />
+于是:</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="c1"># 接上</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zxc0238&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span>
+<span class="p">[</span><span class="s1">&#39;zxc0328&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+</pre></div>
+
+<p><img alt="screen shot 2017-01-26 at 15 38 57" src="https://cloud.githubusercontent.com/assets/10671733/22323397/9913f39c-e3dd-11e6-9751-1efcd372537a.png" /></p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="c1"># 接上</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Node&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">a</span>
+<span class="p">[</span><span class="s1">&#39;zxc0328&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Node&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">b</span>
+<span class="p">[</span><span class="s1">&#39;neo1218&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;MUXI&#39;</span><span class="p">]]</span>
+</pre></div>
+
+<p><img alt="screen shot 2017-01-26 at 15 39 33" src="https://cloud.githubusercontent.com/assets/10671733/22323405/aa7ac980-e3dd-11e6-8cf7-8805d857db2a.png" /></p>
+
+<h2>举个例子🌰</h2>
+
+<p>理解Python内存机制, 关键在于理解</p>
+
+<ol>
+<li>Python变量是引用, 引用某块内存, 某块内存可以通过赋值、拷贝被多个对象引用</li>
+<li>修改不可变对象会开辟一块新的内存, 旧的内存如果没有被别的对象引用会适时被回收</li>
+<li>修改可变对象则直接在原内存上修改</li>
+<li>浅拷贝是部分拷贝, 内部的可变对象依然是传引用</li>
+<li>深拷贝是完全拷贝, 拷贝前后的2个对象不会修改对方的内存</li>
+<li>Python会缓存小整数和短字符串(字母、数字、下划线)</li>
+</ol>
+
+<p>OK, 上例子</p>
+
+<div class="codehilite"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">function</span><span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="p">[]):</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">....</span> <span class="n">printf</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">function</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+</pre></div>
+
+<p>😂提示: a是一个可变对象; <code>function.__defaults__</code>存储了默认参数的值.</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
