@@ -1,0 +1,117 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>树莓派造车计划~准备</title>
+    </head>
+    <body>
+        <h1>树莓派造车计划~准备</h1>
+
+<h2>设计图</h2>
+
+<p><img alt="screen shot 2017-02-02 at 11 22 22" src="https://cloud.githubusercontent.com/assets/10671733/22536046/ea48efcc-e939-11e6-945e-b5d2d7021f10.png" />
+树莓派小车主要分为4大块, <strong>控制端</strong>、<strong>中控端</strong>、<strong>受控端</strong>、<strong>供电端</strong>, 接下来分别简单的介绍一下.</p>
+
+<h2>控制端</h2>
+
+<p>控制端的核心是树莓派, 用于执行GPIO程序控制电机驱动. 使用Mac终端ssh远程控制树莓派.</p>
+
+<h3>树莓派</h3>
+
+<h4>准备</h4>
+
+<p>我使用的型号是<strong>RaspberryPI 3 Model B+</strong>, 因为树莓派开箱没有安装系统以及配置, 无法远程控制, 所以需要准备显示屏(我使用的是7寸车载显示屏)、键盘、鼠标、HDMI线(或者HDMI转VGA, 具体看显示屏). <br/>
+然后安装系统到sd卡, 我安装的是不带图形界面的, 小很多, 下载的快一点. <br/>
+系统写入sd卡后, 将sd卡插入树莓派、通电(红灯亮)、开机(绿灯亮,sd卡活动,读写硬盘), 登入系统:
+<img alt="img20170131220308" src="https://cloud.githubusercontent.com/assets/10671733/22512502/333b2210-e8d4-11e6-9600-bfa5580997fd.jpg" />
+接下来就是配置无线网络, 配置好网络就可以使用ssh远程连接了, 就不用盯着这个小显示屏了(看的眼睛都要瞎了...还是大一点比较好). <br/>
+RaspberryPI 3的一个大改进就是内置了无线网卡, 虽然还要写一些配置, 但是至少不用担心网卡驱动的问题了. <br/>
+首先是配置Wi-Fi:</p>
+
+<div class="codehilite"><pre><span></span><span class="n">country</span><span class="o">=</span><span class="n">CN</span>
+<span class="n">ctrl_interface</span><span class="o">=</span><span class="n">DIR</span><span class="o">=/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">wpa_supplicant</span> <span class="n">GROUP</span><span class="o">=</span><span class="n">netdev</span>
+<span class="n">update_config</span><span class="o">=</span><span class="mi">1</span>
+
+<span class="n">network</span><span class="o">=</span><span class="p">{</span>
+    <span class="n">ssid</span><span class="o">=</span><span class="s2">&quot;Wi-Fi SSID&quot;</span>
+    <span class="n">psk</span><span class="o">=</span><span class="s2">&quot;Wi-Fi PASSWORD&quot;</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>然后配置dhcp, 给树莓派分配IP</p>
+
+<div class="codehilite"><pre><span></span><span class="n">nohook</span> <span class="n">lookup</span><span class="o">-</span><span class="n">hostname</span>
+<span class="n">auto</span> <span class="n">wlan0</span>  <span class="c1"># wlan0就是树莓派内置的无线网卡</span>
+</pre></div>
+
+<p>这样就可以使用ssh远程连接了树莓了!</p>
+
+<div class="codehilite"><pre><span></span><span class="err">$</span> <span class="n">ssh</span> <span class="n">pi</span><span class="nd">@ip</span>
+</pre></div>
+
+<p>树莓派的ip可以通过<code>ifconfig wlan0</code>查看, 树莓派拿到ip, 就可以上网了.
+<img alt="screen shot 2017-02-02 at 00 18 09" src="https://cloud.githubusercontent.com/assets/10671733/22515366/34fcf6b0-e8dd-11e6-80fe-e75a5b93fc32.png" /></p>
+
+<h2>GPIO</h2>
+
+<p>GPIO是General Purpose Input/Output的简写, 用于与外部硬件交互.
+<img alt="raspberry-pi-gpio-pinout-diagram-new" src="https://cloud.githubusercontent.com/assets/10671733/22513360/f9afbe90-e8d6-11e6-98a8-74f43c9871c7.png" />
+<img alt="gpio-numbers-pi2" src="https://cloud.githubusercontent.com/assets/10671733/22513380/0d7a09e4-e8d7-11e6-987f-3c32d7c6396e.png" />
+使用<strong>RPi.GPIO</strong>模块可以很方便的控制各个GPIO的pin脚.</p>
+
+<h2>中控端</h2>
+
+<p>中控端是树莓派和小车间的桥梁, 核心是L298N电机驱动板, 受树莓派GPIO控制, 驱动小车马达.</p>
+
+<h3>L298N电机驱动板</h3>
+
+<p><img alt="1772475-15033110134j43" src="https://cloud.githubusercontent.com/assets/10671733/22513876/81947a98-e8d8-11e6-97c4-66121c543571.jpg" />
+接入12V和GND连接电源, OUT1~OUT2、OUT3~OUT4两对分别连接一个马达, 这样并联就可以连接4个马达, 然后GPIO的pin脚连接IN1~IN4. 这样, 就可以使用Python编写程序设置GPIO pin脚的电流高低来控制4轮小车的转向啦!
+<img alt="0314465570691209" src="https://cloud.githubusercontent.com/assets/10671733/22513908/9c90c518-e8d8-11e6-8c85-d970bce75459.jpg" /></p>
+
+<h2>受控端</h2>
+
+<p>受控端就是四驱小车.</p>
+
+<h3>小车(轮子、底盘、马达、胶布)</h3>
+
+<p>轮子、底盘、马达用于构造小车, 胶布用来连接😂</p>
+
+<h2>供电端</h2>
+
+<ul>
+<li>树莓派供电: 移动电源</li>
+<li>L289N供电: 3个5v电池</li>
+</ul>
+
+<h2>连接: 杜邦线</h2>
+
+<h2>let the hacking begin</h2>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
