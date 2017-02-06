@@ -1,0 +1,217 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>cpython源码阅读之refcount</title>
+    </head>
+    <body>
+        <h1>cpython源码阅读之refcount</h1>
+
+<hr/>
+
+<blockquote>
+<p>寒假就要结束了, 这个寒假活的好累<code>＜( ￣︿￣)︵θ︵θ︵θ︵θ︵☆(＞口＜－),</code> 终于💊结束了!!! <br/>
+<hr/>
+这2天无聊看了一点点cpython的源码, 觉得并没有想象中的艰深, 但是很多东西很难理解, 为什么要这样、为什么要那样. 果然大神的思想不是我等常人能够理解的<code>( &gt;﹏&lt;。)~</code>. 不过才刚开始看, 深入了以后或许就明白了这些代码背后的用意! <br/>
+正好之前总结了一下<a href="https://neo1218.github.io/pymemory/">Python的内存管理</a>, 然而仅仅停留在使用层面上的总结不是很踏实, 比如之前说了: cpython会在某时刻遍历所有的对象并减少被引用对象的引用计数来消除引用环, 可是什么时候遍历? 如何遍历所有(不同类型的)对象? 如何减少引用计数? ...... <br/>
+还是去源码里一探究竟吧!
+<hr/></p>
+</blockquote>
+
+<h2>什么是reference count ?</h2>
+
+<p>reference count是Python对象的属性, 用于表示该对象被引用的次数. reference count是cpython进行gc的最重要指标:<code>当某个对象的reference count为0时, 表示没有代码使用这个对象, 那么该对象占用的内存就会被释放.</code> <br/>
+每个Python对象都<strong>继承</strong>了<strong>PyObject</strong></p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="n">_object</span> <span class="p">{</span>
+    <span class="n">_PyObject_HEAD_EXTRA</span>
+    <span class="n">Py_ssize_t</span> <span class="n">ob_refcnt</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">_typeobject</span> <span class="o">*</span><span class="n">ob_type</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">PyObject</span><span class="p">;</span>
+
+<span class="c1">// _PyObject_HEAD_EXTRA</span>
+<span class="cp">#define _PyObject_HEAD_EXTRA            \</span>
+<span class="cp">    struct _object *_ob_next;           \</span>
+<span class="cp">    struct _object *_ob_prev;</span>
+</pre></div>
+
+<p><strong>_PyObject_HEAD_EXTRA</strong>不就是操作系统里做线程管理的时候用到的通用双向链表指针吗! 看来cpython也通过定义通用的链表节点指针链接所有不同类型的对象以便遍历呢!
+<strong>ob_refcnt</strong>就是该对象的引用计数,类型是Py_ssize_t(<code>typedef Py_ssize_t long;</code>), <strong>ob_type</strong>是指向<strong>PyTypeObject</strong>的类型指针. <br/>
+那么继承关系是如何体现的呢? 以<strong>PyListObject</strong>为例:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">PyObject_VAR_HEAD</span>
+    <span class="cm">/* Vector of pointers to list elements.  list[0] is ob_item[0], etc. */</span>
+    <span class="n">PyObject</span> <span class="o">**</span><span class="n">ob_item</span><span class="p">;</span>
+    <span class="n">Py_ssize_t</span> <span class="n">allocated</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">PyListObject</span><span class="p">;</span>
+
+<span class="c1">// PyObject_VAR_HEAD</span>
+<span class="cp">#define PyObject_VAR_HEAD      PyVarObject ob_base;</span>
+</pre></div>
+
+<p>这里先过渡一下, 因为list是容器, 除了引用计数和类型外还需要容器大小等属性,
+所以cpython定义了一个PyVarObject结构体用于存储这些变量:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">PyObject</span> <span class="n">ob_base</span><span class="p">;</span>
+    <span class="n">Py_ssize_t</span> <span class="n">ob_size</span><span class="p">;</span> <span class="cm">/* Number of items in variable part */</span>
+<span class="p">}</span> <span class="n">PyVarObject</span><span class="p">;</span>
+</pre></div>
+
+<p>PyVarObject的<strong>开头</strong>定义了<code>PyObject ob_base</code>实现了继承.  也就是说:<strong>PyListObject继承PyVarObject, PyVarObject继承PyObject</strong>. <br/>
+C不是面向过程的语言吗?如何实现继承呢? 一开始我也很疑惑, 不过在看了<a href="https://neo1218.github.io/libuv2/">libuv的源码后弄明白了</a>, 这里的继承其实是<strong>memory cast trick</strong>, 因为结构体中内存分布是顺序的, 所以PyListObject可以被cast成PyVarObject(丢掉多余的内存); 同理, PyVarObject可以被cast成PyObject. 不过相比如OOP中的继承, 这里可没有权限检查o(<em>￣▽￣</em>)ゞ ! <br/>
+所以, 每一个Python对象通过继承PyObject而拥有引用计数ob_refcnt.</p>
+
+<h2>Py_INCREF()和Py_DECREF()</h2>
+
+<p>Python使用宏Py_INCREF()和Py_DECREF()增加和减少引用计数. 这2个宏比较复杂, 改变引用计数可不仅仅是做做加减, 还需要进行检查, Py_DECREF()在引用计数为0时还需要调用destructor释放对象的内存:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">destructor</span><span class="p">)(</span><span class="n">PyObject</span> <span class="o">*</span><span class="p">)</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">_typeobject</span> <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">destructor</span> <span class="n">tp_dealloc</span><span class="p">;</span>
+    <span class="p">...</span>
+<span class="p">}</span> <span class="n">PyTypeObject</span><span class="p">;</span>
+<span class="c1">// 每个PyObject都包含指向PyTypeObject的指针, 可以拿到destructor</span>
+</pre></div>
+
+<p>先看看Py_INCREF()宏</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define Py_INCREF(op) (                         \</span>
+<span class="cp">    _Py_INC_REFTOTAL  _Py_REF_DEBUG_COMMA       \</span>
+<span class="cp">    ((PyObject *)(op))-&gt;ob_refcnt++)</span>
+<span class="c1">// 展开后的代码如下</span>
+<span class="cp">#define Py_INCREF(op) (                         \</span>
+<span class="cp">    _Py_RefTotal++ ,                            \</span>
+<span class="cp">    ((PyObject *)(op))-&gt;ob_refcnt++)</span>
+</pre></div>
+
+<p>Py_INCREF()比较简单, 将对象的引用计数增加就行了, 这里现将对象转换成"基类"PyObject从而拿到ob_refcnt. <br/>
+再看Py_DECREF()宏:</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define Py_DECREF(op)                                   \</span>
+<span class="cp">    do {                                                \</span>
+<span class="cp">        PyObject *_py_decref_tmp = (PyObject *)(op);    \</span>
+<span class="cp">        if (_Py_DEC_REFTOTAL  _Py_REF_DEBUG_COMMA       \</span>
+<span class="cp">        --(_py_decref_tmp)-&gt;ob_refcnt != 0)             \</span>
+<span class="cp">            _Py_CHECK_REFCNT(_py_decref_tmp)            \</span>
+<span class="cp">        else                                            \</span>
+<span class="cp">            _Py_Dealloc(_py_decref_tmp);                \</span>
+<span class="cp">    } while (0)</span>
+<span class="c1">// 展开后的代码如下(方便读我把宏换行连接符去了)</span>
+<span class="k">do</span> <span class="p">{</span>
+      <span class="n">PyObject</span> <span class="o">*</span><span class="n">_py_decref_tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyObject</span> <span class="o">*</span><span class="p">)(</span><span class="n">op</span><span class="p">);</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">_Py_RefTotal</span><span class="o">--</span><span class="p">,</span> <span class="o">--</span><span class="p">(</span><span class="n">_py_decref_tmp</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">ob_refcnt</span> <span class="o">!=</span><span class="mi">0</span> <span class="p">)</span> <span class="p">{</span>
+          <span class="p">{</span><span class="k">if</span> <span class="p">(((</span><span class="n">PyObject</span><span class="o">*</span><span class="p">)</span><span class="n">_py_decref_tmp</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">ob_refcnt</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+               <span class="cm">/* debug抛异常 */</span>
+               <span class="n">_Py_NegativeRefcount</span><span class="p">(</span><span class="n">__FILE__</span><span class="p">,</span> <span class="n">__LINE__</span><span class="p">,</span>
+               <span class="p">(</span><span class="n">PyObject</span> <span class="o">*</span><span class="p">)(</span><span class="n">_py_decref_tmp</span><span class="p">));</span>
+          <span class="p">}}</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+          <span class="n">dec_count</span><span class="p">(</span><span class="n">Py_TYPE</span><span class="p">(</span><span class="n">_py_decref_tmp</span><span class="p">));</span>
+          <span class="p">(</span><span class="o">*</span><span class="n">Py_TYPE</span><span class="p">(</span><span class="n">_py_decref_tmp</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">tp_dealloc</span><span class="p">)((</span><span class="n">PyObject</span> <span class="o">*</span><span class="p">)(</span><span class="n">_py_decref_tmp</span><span class="p">));</span>
+      <span class="p">}</span>
+<span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>    
+<span class="c1">// Py_TYPE宏</span>
+<span class="cp">#define Py_TYPE(ob)             (((PyObject*)(ob))-&gt;ob_type)</span>
+<span class="c1">// dec_count函数</span>
+<span class="kt">void</span> <span class="n">dec_count</span><span class="p">(</span><span class="n">PyTypeObject</span> <span class="o">*</span><span class="n">tp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_frees</span><span class="o">++</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlist_types_without_objects</span> <span class="o">&amp;&amp;</span>
+        <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_allocs</span> <span class="o">==</span> <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_frees</span><span class="p">)</span> <span class="p">{</span>
+        <span class="cm">/* unlink the type from type_list */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_prev</span><span class="p">)</span>
+            <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_prev</span><span class="o">-&gt;</span><span class="n">tp_next</span> <span class="o">=</span> <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_next</span><span class="p">;</span>
+        <span class="k">else</span>
+            <span class="n">type_list</span> <span class="o">=</span> <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_next</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_next</span><span class="p">)</span>
+            <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_next</span><span class="o">-&gt;</span><span class="n">tp_prev</span> <span class="o">=</span> <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_prev</span><span class="p">;</span>
+        <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_next</span> <span class="o">=</span> <span class="n">tp</span><span class="o">-&gt;</span><span class="n">tp_prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">tp</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>这个宏减少对象的引用计数, 外围加上检查, 如果引用计数小于零, 则debug报错. <br/>
+如果引用计数为0, dec_count函数将该对象从类型链(type_list)中取出, 继续调用Py_DECREF宏, 将对象ob转换为PyObject类型, 拿到指向PyTypeObject的指针, 访问ob的destructor: tp_dealloc释放对象内存. <br/></p>
+
+<h2>使用Py_INCREF()和Py_DECREF()的几种情况</h2>
+
+<p>理论上, 使用一次Py_INCREF()就要相应的调用一次Py_DECREF(), 不过由于引用的传递性, 实际情况(比如写cpython扩展)往往比较复杂, 对于谁该调用Py_DECREF()、Py_DECREF(), 有以下几种情况: </p>
+
+<h3>1. 被调函数返回PyObject引用给主调函数</h3>
+
+<p>比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="n">PyObject</span><span class="o">*</span> <span class="nf">Py_Something</span><span class="p">(</span><span class="n">arguments</span><span class="p">);</span>
+
+<span class="kt">void</span> <span class="nf">MyCode</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span> <span class="p">{</span>
+     <span class="n">PyObject</span><span class="o">*</span> <span class="n">pyo</span><span class="p">;</span>
+     <span class="p">...</span>
+     <span class="n">pyo</span> <span class="o">=</span> <span class="n">Py_Something</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+     <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">pyo</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>Py_Something函数有下面这些:</p>
+
+<ul>
+<li>PyTuple_GetItem(),</li>
+<li>PyList_GetItem(),</li>
+<li>PyList_GET_ITEM(),</li>
+<li>PyList_SET_ITEM(),</li>
+<li>PyDict_GetItem(),</li>
+<li>PyDict_GetItemString(),</li>
+<li>PyErr_Occurred(),</li>
+<li>PyFile_Name(),</li>
+<li>PyImport_GetModuleDict(),</li>
+<li>PyModule_GetDict(),</li>
+<li>PyImport_AddModule(),</li>
+<li>PyObject_Init(),</li>
+<li>Py_InitModule(),</li>
+<li>Py_InitModule3(),</li>
+<li>Py_InitModule4(), and</li>
+<li>PySequence_Fast_GET_ITEM()</li>
+</ul>
+
+<p>这些函数都调用了Py_INCREF, 使用这些函数的外围函数只需要调用Py_DECREF. <br/></p>
+
+<h3>2. 主调函数传递PyObject引用给被调函数</h3>
+
+<h3>3. 保证某个PyObject存在, 不被gc</h3>
+
+<p>这个情况比较复杂, 还是单独开一篇总结吧.</p>
+
+<h2>cpython是如何消除引用环的?</h2>
+
+<p>o(￣┰￣*)ゞ→ <a href="https://github.com/python/cpython/blob/master/Modules/gcmodule.c">我还没看</a></p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
