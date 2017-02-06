@@ -6410,7 +6410,7 @@ p.buttons {
     letter-spacing: -1px;
     text-transform: uppercase;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-    background: url("../img/lvba.jpg") no-repeat center;
+    background: url("https://raw.githubusercontent.com/neo1218/neo1218.github.io/master/static/img/lvba.jpg") no-repeat center;
     background-size: 366px;
     padding: 450px 0 10px;
     margin: 0
