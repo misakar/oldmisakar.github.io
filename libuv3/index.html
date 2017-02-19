@@ -1,0 +1,185 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>libuv源码阅读笔记3</title>
+    </head>
+    <body>
+        <h1>libuv中队列的实现和应用</h1>
+
+<p>在<a href="https://neo1218.github.io/libuv1/">libuv源码阅读笔记1</a>中说了libuv使用宏创建链表的方法,但 没有具体说明链表的各种操作实现以及如何使用. 这篇笔记做为补充.</p>
+
+<hr/>
+
+<h2>链表节点的实现</h2>
+
+<p>链表结构的基础就是节点, 节点包含指针构成链表.  libuv定义了一个通用双向指针类型QUEUE:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span> <span class="o">*</span><span class="n">QUEUE</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</pre></div>
+
+<p>QUEUE实际上就是一个数组, 包含两个类型为<code>void*</code>的指针. 为什么说通用呢? <code>void*</code>是一个特殊的指针, 可以指向任意内存, 在实际使用时可以被cast为任意类型指针使用; 而且 任意类型只需要包含QUEUE类型(名称可以不同)的成员, 就可以作为节点被链接到链表中. 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">[</span><span class="mi">10</span><span class="p">];</span>
+  <span class="n">QUEUE</span> <span class="o">*</span><span class="n">node</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">people</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">size</span><span class="p">;</span>
+  <span class="n">QUEUE</span> <span class="o">*</span><span class="n">node</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">animal</span><span class="p">;</span>
+</pre></div>
+
+<p>虽然people和animal是两种不同的类型, 但是可以被链接到同一个链表中进行管理. <br/>
+那么双向指针又是如何实现的呢? 这就要结合两个有意思的宏:</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_NEXT(q)  (*(QUEUE **) &amp;((*(q))[0]))</span>
+<span class="cp">#define QUEUE_PREV(q)  (*(QUEUE **) &amp;((*(q))[1]))</span>
+</pre></div>
+
+<p>关于这两个宏的具体分析看<a href="https://neo1218.github.io/libuv1/">libuv源码阅读笔记1</a>. QUEUE_NEXT宏接受一个指向通用指针结构QUEUE的指针为参数, 返回一个类型为QUEUE**, 值为<code>&amp;(*q)[0]</code>的指针, 表示指向下一个节点node(<code>QUEUE *node</code>); QUEUE_PREV一样, 不过是指向上一个节点.</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))</span>
+<span class="cp">#define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))</span>
+</pre></div>
+
+<p>QUEUE_PREV_NEXT宏表示某个链表节点prev指针指向节点的next指针指向的链表节点.
+QUEUE_NEXT_PREV类似. <br/></p>
+
+<h2>链表操作的实现</h2>
+
+<h3>链表的初始化</h3>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_INIT(q)       \</span>
+<span class="cp">  do {                      \</span>
+<span class="cp">    QUEUE_NEXT(q) = (q);    \</span>
+<span class="cp">    QUEUE_PREV(q) = (q);    \</span>
+<span class="cp">  }                         \</span>
+<span class="cp">  while (0)</span>
+</pre></div>
+
+<p>初始化链表包含一个节点, 这个节点的next指针和prev指针都指向自己. 可见这里实现的是双向循环链表. 而且通过初始节点可以直接访问头节点(QUEUE_NEXT)和尾节点(QUEUE_PREV)<br/></p>
+
+<h3>获取链表的头节点</h3>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_HEAD(q)       \</span>
+<span class="cp">  (QUEUE_NEXT(q))</span>
+</pre></div>
+
+<p>链表的头节点设为初始节点指向的节点. <br/></p>
+
+<h3>判断链表是否为空</h3>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_EMPTY(q)      \</span>
+<span class="cp">  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))</span>
+</pre></div>
+
+<p>只有一个初始节点, 则链表为空. <br/></p>
+
+<h3>向链表中添加节点</h3>
+
+<h4>向表头插入节点</h4>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_INSERT_HEAD(h, q)     \</span>
+<span class="cp">  do {                              \</span>
+<span class="cp">    QUEUE_NEXT(q) = QUEUE_NEXT(h);  \</span>
+<span class="cp">    QUEUE_PREV(q) = (h);            \</span>
+<span class="cp">    QUEUE_NEXT_PREV(q) = (q);       \</span>
+<span class="cp">    QUEUE_NEXT(h) = (q);            \</span>
+<span class="cp">  }                                 \</span>
+<span class="cp">  while(0)</span>
+</pre></div>
+
+<p>将q节点插入表头, 就是将链表初始节点h的next指针指向的节点赋给q的next指针; 将q的prev指针指向的节点设为h; 将q的next指针指向的节点(也就是原来h的next指针指向的节点[表头])的prev指针指向q; 最后将h的next指针指向q. 图示:
+<img alt="head" src="https://cloud.githubusercontent.com/assets/10671733/23103348/34015fbe-f6f5-11e6-9420-d82895541bc2.png" /></p>
+
+<h4>向表尾插入节点</h4>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_INSERT_TAIL(h, q)     \</span>
+<span class="cp">  do {                              \</span>
+<span class="cp">    QUEUE_NEXT(q) = (h);            \</span>
+<span class="cp">    QUEUE_PREV(q) = QUEUE_PREV(h);  \</span>
+<span class="cp">    QUEUE_PREV_NEXT(q) = (q);       \</span>
+<span class="cp">    QUEUE_PREV(h) = (q);            \</span>
+<span class="cp">  }                                 \</span>
+<span class="cp">  while (0)</span>
+</pre></div>
+
+<p>将q节点插入表尾, 就是将q的next指针指向链表初始节点h; 将h的prev指针指向的节点重新赋给q的prev指针;将q的prev指针指向的节点(也就是原来h的prev直线的节点[表尾])的next指针指向q; 最后将h的prev指针指向q. 图示:
+<img alt="tail" src="https://cloud.githubusercontent.com/assets/10671733/23103349/34053d8c-f6f5-11e6-88be-3de6cf34f709.png" /></p>
+
+<h4>遍历链表</h4>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_FOREACH(q, h)                                  \</span>
+<span class="cp">  for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))</span>
+</pre></div>
+
+<p>从初始节点h出发, 遍历循环回到初始节点.</p>
+
+<h3>删除链表中的某个节点</h3>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_REMOVE(q)                 \</span>
+<span class="cp">  do {                                  \</span>
+<span class="cp">    QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q); \</span>
+<span class="cp">    QUEUE_NEXT_PREV(q) = QUEUE_PREV(q); \</span>
+<span class="cp">  }                                     \</span>
+<span class="cp">  while (0)</span>
+</pre></div>
+
+<p>将某个节点q从链表中删除, 就是将q的prev指向的节点的next指针改为q的next指针指向的节点; 再将q的next指针指向节点的prev指针改为指向q的prev指向的节点. 解除q节点和在链表中前后两个节点的指针关系.
+<br/>
+可见, 通过语义化的宏隐藏链表实现的复杂细节, 确实非常的抽象、直观! <br/>
+这里还有一个特殊的宏, QUEUE_DADA:</p>
+
+<div class="codehilite"><pre><span></span><span class="cp">#define QUEUE_DATA(ptr, type, field)                  \</span>
+<span class="cp">  ((type *) ((char *) (ptr) - offsetof(type, field)))</span>
+</pre></div>
+
+<p>通用链表节点的好处在于, 只要类型实现了节点(比如上面的people), 就可以被链入同一链表中进行管理. 但是链表中指针实际指向的是类型中的节点, 而不是类型本身. 那么如何由通用链表节点找到该节点所属类型对象的指针呢? QUEUE_DATA宏就用来干这个! <br/>
+QUEUE_DATA宏接受三个参数:</p>
+
+<ul>
+<li>ptr: 指向链表节点的指针</li>
+<li>type: 该指针所属对象的类型(比如people)</li>
+<li>field: 该链表节点在类型(结构体)中的定义(比如<code>QUEUE* node</code>)</li>
+</ul>
+
+<p>基本思想如图:
+<img alt="struct" src="https://cloud.githubusercontent.com/assets/10671733/23103821/4e1bb5d2-f6fc-11e6-887a-7e5cabfbe68b.png" /></p>
+
+<p>已知链表节点的实际内存地址(ptr的值)减去链表节点在类型(结构体)中的偏移(offsetof求解)得到对象实际的内存地址, 再cast为指向相应对象类型type的指针! 进而访问这个对象(及其他属性).
+这个C语言技巧在工程中应用非常广泛(Linux系统也有类似的实现).</p>
+
+<h2>应用</h2>
+
+<p>未完待续. <br/>
+<a href="">libuv线程池的实现</a></p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>

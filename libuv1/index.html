@@ -73,8 +73,7 @@
 <span class="cp">#define QUEUE_NEXT(q)  (*(QUEUE **) &amp;((*(q))[0]))</span>
 </pre></div>
 
-<p><img alt="" src="http://ww4.sinaimg.cn/bmiddle/005Obw67gw1f2o81hbhowj308c08ct8q.jpg" />
-初看有点懵, 来仔细分析一下:</p>
+<p>初看有点懵, 来仔细分析一下:</p>
 
 <p><code>#define QUEUE_NEXT(q)</code>定义了一个宏, 接受一个参数q(<strong>QUEUE* q;</strong>). 宏在预处理时会被替换为</p>
 
@@ -118,41 +117,12 @@
 <span class="cp">  }                                                            \</span>
 <span class="cp">  while (0)</span>
 
-<span class="cp">#define QUEUE_ADD(h, n)                                        \</span>
-<span class="cp">  do {                                                         \</span>
-<span class="cp">    QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                        \</span>
-<span class="cp">    QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                        \</span>
-<span class="cp">    QUEUE_PREV(h) = QUEUE_PREV(n);                             \</span>
-<span class="cp">    QUEUE_PREV_NEXT(h) = (h);                                  \</span>
-<span class="cp">  }                                                            \</span>
-<span class="cp">  while (0)</span>
-
-<span class="cp">#define QUEUE_SPLIT(h, q, n)                                   \</span>
-<span class="cp">  do {                                                         \</span>
-<span class="cp">    QUEUE_PREV(n) = QUEUE_PREV(h);                             \</span>
-<span class="cp">    QUEUE_PREV_NEXT(n) = (n);                                  \</span>
-<span class="cp">    QUEUE_NEXT(n) = (q);                                       \</span>
-<span class="cp">    QUEUE_PREV(h) = QUEUE_PREV(q);                             \</span>
-<span class="cp">    QUEUE_PREV_NEXT(h) = (h);                                  \</span>
-<span class="cp">    QUEUE_PREV(q) = (n);                                       \</span>
-<span class="cp">  }                                                            \</span>
-<span class="cp">  while (0)</span>
-
 <span class="cp">#define QUEUE_INSERT_HEAD(h, q)                                \</span>
 <span class="cp">  do {                                                         \</span>
 <span class="cp">    QUEUE_NEXT(q) = QUEUE_NEXT(h);                             \</span>
 <span class="cp">    QUEUE_PREV(q) = (h);                                       \</span>
 <span class="cp">    QUEUE_NEXT_PREV(q) = (q);                                  \</span>
 <span class="cp">    QUEUE_NEXT(h) = (q);                                       \</span>
-<span class="cp">  }                                                            \</span>
-<span class="cp">  while (0)</span>
-
-<span class="cp">#define QUEUE_INSERT_TAIL(h, q)                                \</span>
-<span class="cp">  do {                                                         \</span>
-<span class="cp">    QUEUE_NEXT(q) = (h);                                       \</span>
-<span class="cp">    QUEUE_PREV(q) = QUEUE_PREV(h);                             \</span>
-<span class="cp">    QUEUE_PREV_NEXT(q) = (q);                                  \</span>
-<span class="cp">    QUEUE_PREV(h) = (q);                                       \</span>
 <span class="cp">  }                                                            \</span>
 <span class="cp">  while (0)</span>
 
@@ -164,13 +134,13 @@
 <span class="cp">  while (0)</span>
 </pre></div>
 
-<p>是不是就像写Python一样直观、简单😂</p>
+<p>规避了链表的实现细节, 非常的直观, 语义化!</p>
 
-<h2>Q&amp;A, 其实是自言自语</h2>
+<h2>Q &amp; A</h2>
 
 <p><strong>Q:<code>(*(QUEUE **)result)</code>为什么不能写成<code>((QUEUE *)result)</code>?</strong> <br/>
 <strong>A:</strong> 因为result是<code>void**</code>类型, 虽然<code>QUEUE
-*</code>会把result转换成符合要求的指针, 但这时候指针就不是result而是<code>*result</code>,
+*</code>会把result转换成符合要求的指针, 但这时候指针的值就不是result而是<code>*result</code>,
 所以不能这样写.</p>
         <div id="disqus_thread"></div>
         <script>
