@@ -256,7 +256,7 @@ Python中可以使用<code>sys.getrefcount</code>获取某个对象的引用计�
 <span class="bp">False</span>
 </pre></div>
 
-<p>对<strong>不可变对象</strong>进行浅拷贝, 会使用一块<strong>新的内存区域</strong>, 不过浅拷贝<strong>拷贝对象引用的其他对象, 依然是传引用</strong>. <br/>
+<p>对<strong>可变对象</strong>进行浅拷贝, 会使用一块<strong>新的内存区域</strong>, 不过浅拷贝<strong>拷贝对象引用的其他对象, 依然是传引用</strong>. <br/>
 内存布局图有助于理解浅拷贝:
 <img alt="screen shot 2017-01-26 at 15 15 59" src="https://cloud.githubusercontent.com/assets/10671733/22322965/69d4f43a-e3da-11e6-81ac-61f12eeb8916.png" />
 所以:</p>
