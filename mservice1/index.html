@@ -1,0 +1,71 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>关于PaaS的一种可能实现方案</title>
+    </head>
+    <body>
+        <h1>关于PaaS的一种可能实现方案</h1>
+
+<h2>可能: 还没有开始写😊</h2>
+
+<p>关于IP被封, 目前最..理想..的方案还是和学校谈解封吧. 免费IP太太太不稳定; 长期付费IP太太太贵; 把自己的服务器们弄成代理池可惜晚了一步, 已经被学校封了几台了; 或者就是买新的服务器然后做迁移, 这样又太麻烦了. <br/>
+祸不单行, 最近新、旧版信息门户又不知道改了什么东西, Upgrade Cookies也失效了, 还不知道获取随机tickets的方法. 外加这悲催的一个月...  于是这两天暂时遗忘这些, 思考了一下同样"恶心", "重要"的架构和监控问题. 有了一点想法, 记录一下. <br/></p>
+
+<h2>华师匣子V1架构</h2>
+
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/19296662/fcbfccb6-906f-11e6-8c03-adbe5e3e5ba9.png" /></p>
+
+<p>华师匣子第一版采用了docker容器做部署, 部署的过程已经简化为一行命令:</p>
+
+<div class="codehilite"><pre><span></span>$  docker-compose build <span class="o">&amp;&amp;</span> docker-compose stop <span class="o">&amp;&amp;</span> docker-compose up -d <span class="o">&amp;&amp;</span> docker-compose ps
+</pre></div>
+
+<p>这是好的地方, V2依然会继续使用docker部署. <br/>
+V1最大的问题在于, 它是<strong>集中式</strong>的! 首先, 代码是集中的, 放在一个VC(Version Control)中进行管理, 这就意味着任何一个改动都要重新部署所有的容器. 不过考虑到华师匣子后端代码量, 这似乎不是什么问题. 但是如此, 横向扩展能力会非常差. Docker最大的好处就是容器环境和主机环境隔离, 横向扩展应用的时候可以简单快速的用<strong>一行命令</strong>进行配置部署, 也就是说容器越不依赖主机环境(数据库, Web服务器), 扩展部署起来也就越简单快速. 然而从架构图可以看出, V1是"汉堡包"型结构, 上层和下层是完全依赖主机环境配置的, 所以集中式的代码库无法很方便的进行横向扩展. 这也是为什么V2的核心在于<strong>拆分</strong>, 拆分可以达到"高内聚、低耦合"的效果, 高内聚是指拆分出的每一个服务专注于特定的功能, 低耦合则是减少不同服务之间的"依赖",如此, 便可按需(访问量)动态部署特定的服务而不是整个应用, 实现不同服务的独立部署, 这和微服务的目标是一致的. <br/>
+V1的另一个问题是 "集中式数据库": 一个Mongodb数据库, 不同的服务使用不同的文档集合. 这是最简单的做法. 然而问题在于对一个集合做改动、迁移的时候可能会影响到整个数据库, 进而影响整个应用, 集中式数据库允许犯错的可能性太小, 而且很多错误都是全局错误! 至少我每次改这种数据库的时候都感觉怕怕的... 所以V2中数据库也要拆! 不过拆数据库会遇到一个很大的问题: <strong>分布式事务</strong>, 数据库分拆以后一个数据库的原子操作(事务)转为对多个数据库的操作, 如何跟踪这些操作的状态? 这些操作有没有失败? 某一个操作失败后如何回退? 这是很麻烦的. 还好, 华师匣子服务间不需要什么跨数据库操作, 所以应该不会碰到这类问题, 可以放心的进行数据库分拆了. </p>
+
+<h2>华师匣子V2架构</h2>
+
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/24837020/0f29db6a-1d5d-11e7-8d8f-3b354e9eabdf.png" /></p>
+
+<p>V2的核心就是<strong>拆</strong>, 拆代码, 拆数据库, 将V1中的模块抽离并抽象为<strong>服务</strong>. 服务是一个关键的概念, 之前我一直在想容器, 如何监控容器、如何部署容器. 但是现在的焦点是: 如何监控服务、如何部署服务. 容器不再是一个单独的实体, 容器可以看做服务的组成, 这一组成层被负载均衡调度器隐藏, 通过API暴露给其他服务和用户. 一个服务可以由1~n个容器组成, 这些容器可以在一台机器上, 也可以在不同机器上, 这不重要, 在调度器眼里都是ip:port! 根据某个服务的"压力"大小, 调度器可以增加/删除容器, 这些容器的环境都是一致的, 受同一个调度器调度、连接同一个数据库, 所以增删起来也比较方便. <br/>
+调度器上接API层, 可以获取压力状态, 如果压力/容器比超过某个值(需要估算单个容器的压力), 那么就去别的主机上(事先维护一个主机表)创建并部署一个容器, 并反馈到负载均衡层(Nginx), Nginx更新配置后便可将部分请求路由到这个容器, 缓解压力. 调度器需要跟踪自己调度的所有容器, 可以借助某些现成的容器管理工具实现容器集群的监控和管理, 这些容器在某种意义上就是这个服务!</p>
+
+<h2>监控</h2>
+
+<p><img alt="" src="https://cloud.githubusercontent.com/assets/10671733/24837021/0f2c9f3a-1d5d-11e7-9913-2a1299c2bff3.png" /></p>
+
+<h2>PaaS ?</h2>
+
+<p>标题是"关于PaaS的一种可能实现方案", 但是一直说的是华师匣子. 其实这里的华师匣子就是应用, 一个应用包含着若干个服务, 如果能够实现V2架构中的服务层, 那么对于任何应用就都是一样的了! <br/>
+设想有一个Web平台, 点击创建应用, 创建服务, 填写代码库地址, 选择运行环境, 点击部署, 应用便可运行, 而且可以看到每个服务的所有容器、网络情况, 可以手动停止一个服务! <br/>
+这不就是PaaS吗! <br/></p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
