@@ -1,0 +1,128 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>docker swarm</title>
+    </head>
+    <body>
+        <h1>docker swarm</h1>
+
+<h2>docker swarm</h2>
+
+<p>docker swarm提供了docker容器集群管理的API. 有了docker swarm的负载均衡调度, 可以把逻辑独立的主机资源抽象出来, 视做一个大容器池.swarm manager node将task发送到某个主机(worker node), 主机负载均衡调度器再将task分发给相对空闲的容器. manager node会根据主机/容器资源比维持一定数量的容器动态运行.</p>
+
+<p><img alt="docker-swarm" src="https://cloud.githubusercontent.com/assets/10671733/25031483/d42f0fa2-20ff-11e7-81ab-e358c69dd2db.jpg" /></p>
+
+<h2>service</h2>
+
+<p>docker swarm的核心组织概念是服务(service), 一个服务的实体是一个docker镜像, 一个服务可以运行在多个容器上, 这些容器称为replicas(副本). 例如: <br/></p>
+
+<p><strong>创建一个服务</strong></p>
+
+<div class="codehilite"><pre><span></span>$ docker service create --replicas <span class="m">1</span> --name helloworld alpine ping muxixyz.com
+</pre></div>
+
+<p>这个服务叫做helloworld, 运行在一个<a href="http://www.infoq.com/cn/news/2016/01/Alpine-Linux-5M-Docker">alpine linux container</a>中, 执行<code>ping muxixyz.com</code>命令.</p>
+
+<p><strong>查看一个服务的状态</strong></p>
+
+<p><strong><em>pretty</em></strong></p>
+
+<div class="codehilite"><pre><span></span>$ docker service inspect --pretty 2uo25xh1ohjf
+
+ID:     2uo25xh1ohjfmk0fca0597dxs
+Name:       asynccnu_info_login_service
+Mode:       Replicated
+ Replicas:  2
+Placement:
+UpdateConfig:
+ Parallelism:   1
+ Delay:     10s
+ On failure:    pause
+ContainerSpec:
+ Image:     asynccnu_info_login_service
+Resources:
+</pre></div>
+
+<p><strong><em>json</em></strong></p>
+
+<div class="codehilite"><pre><span></span>$ docker service inspect 2uo25xh1ohjf
+
+<span class="o">[</span>
+    <span class="o">{</span>
+        <span class="s2">&quot;ID&quot;</span>: <span class="s2">&quot;2uo25xh1ohjfmk0fca0597dxs&quot;</span>,
+        <span class="s2">&quot;Version&quot;</span>: <span class="o">{</span>
+            <span class="s2">&quot;Index&quot;</span>: 93
+        <span class="o">}</span>,
+        ......
+        <span class="s2">&quot;UpdateStatus&quot;</span>: <span class="o">{</span>
+            <span class="s2">&quot;StartedAt&quot;</span>: <span class="s2">&quot;0001-01-01T00:00:00Z&quot;</span>,
+            <span class="s2">&quot;CompletedAt&quot;</span>: <span class="s2">&quot;0001-01-01T00:00:00Z&quot;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">]</span>
+</pre></div>
+
+<p>提供json格式意味着可以把服务状态用可视化(Web)的方式呈现, 而不仅仅是命令行.</p>
+
+<p><strong>查看所有服务</strong></p>
+
+<div class="codehilite"><pre><span></span>$ docker service ls
+
+ID            NAME                         REPLICAS  IMAGE                        COMMAND
+2uo25xh1ohjf  asynccnu_info_login_service  0/2       asynccnu_info_login_service
+</pre></div>
+
+<p><strong>查看某个服务的所有task</strong></p>
+
+<div class="codehilite"><pre><span></span>$ docker service ps 2uo25xh1ohjf
+
+ID                         NAME                               IMAGE                        NODE    DESIRED STATE  CURRENT STATE             ERROR
+doahip2cun3l8j2jp7jbxskei  asynccnu_info_login_service.1      asynccnu_info_login_service  <span class="nb">test</span>    Running        Preparing <span class="m">11</span> minutes ago
+b25qgm4cjnq8uxnl2somvcvc2   <span class="se">\_</span> asynccnu_info_login_service.1  asynccnu_info_login_service  <span class="nb">test</span>    Shutdown       Complete <span class="m">11</span> minutes ago
+as2c8ye4e8k1u0bjsfprymsdy   <span class="se">\_</span> asynccnu_info_login_service.1  asynccnu_info_login_service  <span class="nb">test</span>    Shutdown       Complete <span class="m">11</span> minutes ago
+9fazewsrc7a2hfhcdsip1dwzw   <span class="se">\_</span> asynccnu_info_login_service.1  asynccnu_info_login_service  <span class="nb">test</span>    Shutdown       Complete <span class="m">11</span> minutes ago
+evx7jnmard0in1b9a4ru6cha7   <span class="se">\_</span> asynccnu_info_login_service.1  asynccnu_info_login_service  <span class="nb">test</span>    Shutdown       Complete <span class="m">11</span> minutes ago
+863tmag492a9ekyzjhezh9g5t  asynccnu_info_login_service.2      asynccnu_info_login_service  daemon  Ready          Preparing <span class="m">3</span> seconds ago
+</pre></div>
+
+<p>还可以在服务部署后, 根据访问压力大小自动增删容器</p>
+
+<div class="codehilite"><pre><span></span>$ docker service scale <span class="nv">helloworld</span><span class="o">=</span>5
+</pre></div>
+
+<h2>app ?</h2>
+
+<p>一个应用一般由多个服务组成. docker swarm并没有提供服务集合的概念. 当然了, 知道了每个服务的运行状态, 也就知道了某个应用的运行状态. 特别是微服务下的高内聚, 低耦合. 所以只需要知道一个APP由哪些服务组成, 监控这些服务就可以了, 不需要从全局上对应用进行监控.</p>
+
+<h2>PaaS ?</h2>
+
+<p>很明显, 可以在docker swarm的基础上写一个PaaS.</p>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
