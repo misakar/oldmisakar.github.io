@@ -165,8 +165,6 @@ Dom-Based XSS其实也是反射型XSS的一种, 恶意代码可以通过修改DO
 <p>攻击者可以构造恶意图片URL: <code>javascript:alert(/xss/)</code>进行hack. <br/>
 防御方法就是对用户输入做CSSEncode, 将除字母、数字外的所有字符编码成16进制形式.</p>
 
-<hr/>
-
 <h2>HTTP Only Cookie</h2>
 
 <p>之前模拟登录信息门户, 信息门户的cookie就是<strong>HTTP Only</strong>的, 对于爬虫似乎没什么影响. HTTP Only cookie只能被HTTP客户端读取,而爬虫可以模拟HTTP请求, 所以仍然可以愉快的读取cookie. 但是XSS Payload是JS脚本, 之前通过<code>document.cookie</code>获取cookie的方法对于HTTP Only cookie就不管用了. 不过黑客并不需要直接知道你的cookie, 只要你的浏览器存有被攻击网站的敏感cookie, 那么黑客照样可以通过模拟请求进行攻击!</p>
